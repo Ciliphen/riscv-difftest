@@ -2,3 +2,6 @@
 *.vcd
 obj_dir
 *.gtkw
+
+core/PuaMips.v
+test/test_workbench/soft/

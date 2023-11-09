@@ -47,13 +47,14 @@ module top_axi_wrapper(
 );
 
 
-core_top core_inst(
-    .clock      (clock),
-    .reset      (reset),
+mycpu_top core(
+    .aclk       (clock),
+    .aresetn    (~reset),
     // Interrupts
-    .MEI        (MEI), // to PLIC
-    .MSI        (MSI), // to CLINT
-    .MTI        (MTI), // to CLINT
+    // .MEI        (MEI), // to PLIC
+    // .MSI        (MSI), // to CLINT
+    // .MTI        (MTI), // to CLINT
+    .ext_int    ({{3{1'b0}}, MEI, MSI, MTI}),
     // aw
     .awid       (MAXI_awid),
     .awaddr     (MAXI_awaddr),
@@ -89,10 +90,10 @@ core_top core_inst(
     .rvalid     (MAXI_rvalid),
     .rready     (MAXI_rready),
     // debug
-    .debug_commit(debug_commit),
-    .debug_pc   (debug_pc),
-    .debug_reg_num(debug_reg_num),
-    .debug_wdata(debug_wdata)
+    .debug_wb_rf_wen    (debug_commit),
+    .debug_wb_pc        (debug_pc),
+    .debug_wb_rf_wnum   (debug_reg_num),
+    .debug_wb_rf_wdata  (debug_wdata)
 );
 
 endmodule
