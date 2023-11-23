@@ -3,5 +3,6 @@
 obj_dir
 *.gtkw
 
-core/PuaMips.v
 test/test_workbench/soft/
+core/
+!core/top_axi_wrapper.v
