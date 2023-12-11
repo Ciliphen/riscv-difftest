@@ -17,7 +17,7 @@ class mmio_mem : public mmio_dev  {
         }
         mmio_mem(size_t size_bytes, const unsigned char *init_binary, size_t init_binary_len): mmio_mem(size_bytes) {
             // Initalize memory 
-            assert(init_binary_len <= size_bytes);
+            assert(init_binary_len <= size_bytes, "init_binary_len is larger than memory size.");
             memcpy(mem,init_binary,init_binary_len);
         }
         mmio_mem(size_t size_bytes, const char *init_file): mmio_mem(size_bytes) {

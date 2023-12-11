@@ -15,7 +15,7 @@ class axi4_mem : public axi4_slave<A_WIDTH,D_WIDTH,ID_WIDTH>  {
             mem_size = size_bytes;
         }
         axi4_mem(size_t size_bytes, const uint8_t *init_binary, size_t init_binary_len):axi4_mem(size_bytes) {
-            assert(init_binary_len <= size_bytes);
+            assert(init_binary_len <= size_bytes, "init_binary_len is larger than memory size.");
             memcpy(mem,init_binary,init_binary_len);
         }
         ~axi4_mem() {

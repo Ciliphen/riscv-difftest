@@ -6,9 +6,10 @@
 
 bool running = true;
 #undef assert
-void assert(bool expr) {
+void assert(bool expr, const char *msg = "") {
     if (!expr) {
         running = false;
+        printf("%s\n",msg);
         printf("soc_simulator assert failed!\n");
     }
 }
@@ -28,6 +29,7 @@ void assert(bool expr) {
 
 bool run_riscv_test = false;
 bool dump_pc_history = false;
+bool print_pc = false;
 const uint64_t commit_timeout = 500;
 
 void connect_wire(axi4_ptr <32,64,4> &mmio_ptr, Vtop_axi_wrapper *top) {
@@ -107,6 +109,114 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
     rv_core cemu_rvcore(cemu_system_bus,0);
     cemu_rvcore.jump(0x60000000);
     // setup cemu }
+
+    // connect Vcd for trace
+    VerilatedVcdC vcd;
+    if (trace_on) {
+        top->trace(&vcd,0);
+        vcd.open("trace.vcd");
+    }
+
+    uint64_t rst_ticks = 10;
+    uint64_t ticks = 0;
+    uint64_t last_commit = ticks;
+
+    while (!Verilated::gotFinish() && sim_time > 0 && running) {
+        if (rst_ticks  > 0) {
+            top->reset = 1;
+            rst_ticks --;
+        }
+        else top->reset = 0;
+        top->clock = !top->clock;
+        if (top->clock && !top->reset) mmio_sigs.update_input(mmio_ref);
+        top->eval();
+        if (top->clock && !top->reset) {
+            mmio.beat(mmio_sigs_ref);
+            mmio_sigs.update_output(mmio_ref);
+            top->eval();
+            if (uart.exist_tx()) {
+                printf("%c",uart.getc());
+                fflush(stdout);
+            }
+        }
+        if (top->clock && top->debug_commit) { // instr retire
+            cemu_rvcore.step(0,0,0,0);
+            last_commit = ticks;
+            if (top->debug_pc != cemu_rvcore.debug_pc || 
+                cemu_rvcore.debug_reg_num != 0 && (
+                    top->debug_reg_num != cemu_rvcore.debug_reg_num || 
+                    top->debug_wdata   != cemu_rvcore.debug_reg_wdata
+                ) 
+            ) {
+                printf("Error!\n");
+                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
+                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
+                running = false;
+                if (dump_pc_history) cemu_rvcore.dump_pc_history();
+            }
+        }
+        if (trace_on) {
+            vcd.dump(ticks);
+            sim_time --;
+        }
+        ticks ++;
+        if (ticks - last_commit >= commit_timeout) {
+            printf("Error!\nCPU stuck for %ld cycles!\n", commit_timeout / 2);
+            running = false;
+            if (dump_pc_history) cemu_rvcore.dump_pc_history();
+        }
+    }
+    if (trace_on) vcd.close();
+    top->final();
+    pthread_kill(uart_input_thread->native_handle(),SIGKILL);
+    printf("total_ticks: %lu\n", ticks);
+}
+
+void linux_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
+    const char *load_path = "./linux/fw_payload.bin";
+
+    // loader {
+    const uint64_t riscv_test_text_start = 0x80000000;
+    uint32_t loader_instr[3] = {
+        0x600010b7u,// lui	ra,0x60001
+        0x0000b083u,// ld	ra,0(ra) # 60001000
+        0x000080e7u // jalr	ra
+    };
+    // loader }
+
+    // setup cemu {
+    rv_systembus cemu_system_bus;
+    mmio_mem cemu_boot_ram(1024*16);
+    assert(cemu_boot_ram.do_write(0,12,(uint8_t*)&loader_instr), "cemu boot ram loader");
+    assert(cemu_boot_ram.do_write(0x1000,8,(uint8_t*)&riscv_test_text_start), "cemu boot ram text start");
+    mmio_mem cemu_mem(4096l*1024l*1024l,load_path);
+    uartlite cemu_uart;
+
+    assert(cemu_system_bus.add_dev(0x60000000,1024*16,&cemu_boot_ram), "cemu boot ram");
+    assert(cemu_system_bus.add_dev(0x60100000,1024*1024,&cemu_uart), "cemu uart");
+    assert(cemu_system_bus.add_dev(0x80000000,2048l*1024l*1024l,&cemu_mem), "cemu mem");
+
+    rv_core cemu_rvcore(cemu_system_bus);
+    cemu_rvcore.jump(0x60000000);
+    // setup cemu }
+
+    // setup rtl {
+    axi4     <32,64,4> mmio_sigs;
+    axi4_ref <32,64,4> mmio_sigs_ref(mmio_sigs);
+    axi4_xbar<32,64,4> mmio;
+
+    mmio_mem rtl_boot_ram(1024*16);
+    rtl_boot_ram.do_write(0,12,(uint8_t*)&loader_instr);
+    rtl_boot_ram.do_write(0x1000,8,(uint8_t*)&riscv_test_text_start);
+    mmio_mem rtl_mem(4096l*1024l*1024l,load_path);
+
+    // setup uart
+    uartlite uart;
+    std::thread *uart_input_thread = new std::thread(uart_input,std::ref(uart));
+    assert(mmio.add_dev(0x60000000,1024*16,&rtl_boot_ram), "mimo boot ram");
+    assert(mmio.add_dev(0x60100000,0x10000,&uart), "mimo uart");
+    assert(mmio.add_dev(0x80000000,2048l*1024l*1024l,&rtl_mem), "mimo mem");
+    // setup rtl }
 
     // connect Vcd for trace
     VerilatedVcdC vcd;
@@ -217,6 +327,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref, const c
     uint64_t rst_ticks = 10;
     uint64_t ticks = 0;
     uint64_t last_commit = ticks;
+    int delay = 10;
     while (!Verilated::gotFinish() && sim_time > 0 && running) {
         if (rst_ticks  > 0) {
             top->reset = 1;
@@ -243,8 +354,14 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref, const c
                 printf("Error!\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
-                running = false;
+                // if (dump_pc_history && delay == 10) cemu_rvcore.dump_pc_history();
+                // if (delay == 10) cemu_rvcore.dump_pc_history();
+                // if (delay-- == 0)
+                // {
+                //     running = false;
+                // }
                 if (dump_pc_history) cemu_rvcore.dump_pc_history();
+                running = false;
             }
         }
         if (trace_on) {
@@ -269,7 +386,7 @@ int main(int argc, char** argv, char** env) {
     });
 
     char *file_load_path;
-    enum {NOP, WORKBENCH, RISCV_TEST} run_mode = WORKBENCH;
+    enum {NOP, WORKBENCH, RISCV_TEST, LINUX_RUN} run_mode = WORKBENCH;
 
     for (int i=1;i<argc;i++) {
         if (strcmp(argv[i],"-trace") == 0) {
@@ -282,8 +399,14 @@ int main(int argc, char** argv, char** env) {
             run_riscv_test = true;
             run_mode = RISCV_TEST;
         }
+        else if (strcmp(argv[i],"-linux") == 0) {
+            run_mode = LINUX_RUN;
+        }
         else if (strcmp(argv[i],"-pc") == 0) {
             dump_pc_history = true;
+        }
+        else if (strcmp(argv[i],"-printpc") == 0) {
+            print_pc = true;
         }
         else {
             file_load_path = argv[i];
@@ -307,6 +430,9 @@ int main(int argc, char** argv, char** env) {
             break;
         case RISCV_TEST:
             riscv_test_run(top, mmio_ref, file_load_path);
+            break;
+        case LINUX_RUN:
+            linux_run(top, mmio_ref);
             break;
         default:
             printf("Unknown running mode.\n");

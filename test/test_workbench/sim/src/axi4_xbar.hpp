@@ -18,7 +18,10 @@ public:
     }
     bool add_dev(uint64_t start_addr, uint64_t length, mmio_dev *dev) {
         std::pair<uint64_t, uint64_t> addr_range = std::make_pair(start_addr,start_addr+length);
-        if (start_addr % length) return false;
+        if (start_addr % length){
+            printf("mmio device start address must be aligned to its length\n");
+            return false;
+        }
         // check range
         auto it = devices.upper_bound(addr_range);
         if (it != devices.end()) {
@@ -38,8 +41,8 @@ public:
     }
 protected:
     axi_resp do_read(uint64_t start_addr, uint64_t size, unsigned char* buffer) {
-        //printf("mmio read %lx size %lu\n",start_addr,size);
-        //fflush(stdout);
+        // printf("mmio read %lx size %lu\n",start_addr,size);
+        // fflush(stdout);
         auto it = devices.upper_bound(std::make_pair(start_addr,ULONG_MAX));
         if (it == devices.begin()) return RESP_DECERR;
         it = std::prev(it);
@@ -51,8 +54,8 @@ protected:
         else return RESP_DECERR;
     }
     axi_resp do_write(uint64_t start_addr, uint64_t size, const unsigned char* buffer) {
-        //printf("mmio write %lx size %lu\n",start_addr,size);
-        //fflush(stdout);
+        // printf("mmio write %lx size %lu\n",start_addr,size);
+        // fflush(stdout);
         auto it = devices.upper_bound(std::make_pair(start_addr,ULONG_MAX));
         if (it == devices.begin()) return RESP_DECERR;
         it = std::prev(it);

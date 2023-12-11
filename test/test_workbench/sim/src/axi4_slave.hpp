@@ -110,7 +110,7 @@ class axi4_slave {
             r_cur_trans     = 0;
             r_tot_len       = ( (r_burst_type == BURST_FIXED) ? r_each_len : r_each_len * r_nr_trans) - (r_start_addr % r_each_len); // first beat can be unaligned
             r_early_err     = !read_check();
-            assert(!r_early_err);
+            assert(!r_early_err, "r early error");
             // clear unused bits.
             if (r_start_addr % D_bytes) {
                 uint64_t clear_addr = r_start_addr % 4096;
@@ -173,7 +173,8 @@ class axi4_slave {
         axi_resp        w_resp;
         uint8_t         w_buffer[D_WIDTH/8];
         bool write_check() {
-            if (w_burst_type == BURST_RESERVED || w_burst_type) return false;
+            if (w_burst_type == BURST_RESERVED) return false;// TODO:去掉了或，不知道对不对
+            // if (w_burst_type == BURST_RESERVED || w_burst_type) return false;
             if (w_burst_type == BURST_WRAP && (w_current_addr % w_each_len)) return false;
             if (w_burst_type == BURST_WRAP) {
                 if (w_nr_trans != 2 || w_nr_trans != 4 || w_nr_trans != 8 || w_nr_trans != 16) return false;
@@ -193,7 +194,7 @@ class axi4_slave {
             w_cur_trans     = 0;
             w_tot_len       = w_each_len * w_nr_trans - (w_start_addr % w_each_len);
             w_early_err     = !write_check();
-            assert(!w_early_err);
+            assert(!w_early_err, "w early error");
             w_resp          = RESP_OKEY;
         }
         // pair<start,len>

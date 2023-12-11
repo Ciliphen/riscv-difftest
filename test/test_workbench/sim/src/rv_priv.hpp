@@ -50,6 +50,10 @@ public:
         scounteren = 0;
     }
 
+    void get_cur_priv(){
+        printf("cur_priv = %d\n", cur_priv);
+    }
+
     void pre_exec(bool meip, bool msip, bool mtip, bool seip) {
         mcycle ++;
         int_def *ip_bits = (int_def*)&ip;
