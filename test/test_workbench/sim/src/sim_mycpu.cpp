@@ -3,6 +3,8 @@
 #include "Vtop_axi_wrapper.h"
 #include "rv_systembus.hpp"
 #include "rv_core.hpp"
+#include "rv_clint.hpp"
+#include "rv_plic.hpp"
 
 bool running = true;
 #undef assert
@@ -31,6 +33,7 @@ bool run_riscv_test = false;
 bool dump_pc_history = false;
 bool print_pc = false;
 const uint64_t commit_timeout = 500;
+const uint64_t print_pc_cycle = 1e5;
 
 void connect_wire(axi4_ptr <32,64,4> &mmio_ptr, Vtop_axi_wrapper *top) {
     // connect
@@ -91,14 +94,34 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
     axi4_ref <32,64,4> mmio_sigs_ref(mmio_sigs);
     axi4_xbar<32,64,4> mmio;
 
+    // loader {
+    const uint64_t riscv_test_text_start = 0x60000000;
+    uint32_t loader_instr[5] = {
+        0x000800b7u,// lui	ra,0x80000
+        0x00108093u, // addi ra, ra, 1
+        0x00c09093u, // slli ra, ra, 0xc
+        0x0000b083u,// ld ra,0(ra) # 80001000
+        0x000080e7u // jalr	ra
+    };
+    // loader }
+
+    mmio_mem cemu_loader_ram(262144*4);
+    assert(cemu_loader_ram.do_write(0,20,(uint8_t*)&loader_instr), "cemu boot ram loader");
+    assert(cemu_loader_ram.do_write(0x1000,8,(uint8_t*)&riscv_test_text_start), "cemu boot ram text start");
+
+    mmio_mem rtl_boot_ram(262144*4);
+    rtl_boot_ram.do_write(0,20,(uint8_t*)&loader_instr);
+    rtl_boot_ram.do_write(0x1000,8,(uint8_t*)&riscv_test_text_start);
+
     // setup boot ram
     mmio_mem boot_ram(262144*4, "../soft/start.bin");
-    assert(mmio.add_dev(0x60000000,0x100000,&boot_ram));
 
     // setup uart
     uartlite uart;
     std::thread *uart_input_thread = new std::thread(uart_input,std::ref(uart));
+    assert(mmio.add_dev(0x60000000,0x100000,&boot_ram));
     assert(mmio.add_dev(0x60100000,0x10000,&uart));
+    assert(mmio.add_dev(0x80000000,262144*4,&rtl_boot_ram), "mimo boot ram");
     
     // setup cemu {
     rv_systembus cemu_system_bus;
@@ -106,8 +129,9 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
     uartlite cemu_uart;
     assert(cemu_system_bus.add_dev(0x60000000,0x100000,&cemu_boot_ram));
     assert(cemu_system_bus.add_dev(0x60100000,1024*1024,&cemu_uart));
+    assert(cemu_system_bus.add_dev(0x80000000,262144*4,&cemu_loader_ram), "cemu boot ram");
     rv_core cemu_rvcore(cemu_system_bus,0);
-    cemu_rvcore.jump(0x60000000);
+    cemu_rvcore.jump(0x80000000);
     // setup cemu }
 
     // connect Vcd for trace
@@ -173,7 +197,10 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
 }
 
 void linux_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
-    const char *load_path = "./linux/fw_payload.bin";
+    // const char *load_path = "./linux/vmlinux";
+    // const char *load_path = "./linux/fw_payload.bin";
+    const char *load_path = "../soft/start.bin";
+    
 
     // loader {
     const uint64_t riscv_test_text_start = 0x80000000;
@@ -191,7 +218,11 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
     assert(cemu_boot_ram.do_write(0x1000,8,(uint8_t*)&riscv_test_text_start), "cemu boot ram text start");
     mmio_mem cemu_mem(4096l*1024l*1024l,load_path);
     uartlite cemu_uart;
+    rv_clint <2> cemu_clint;
+    rv_plic <4,4> cemu_plic;
 
+    assert(cemu_system_bus.add_dev(0x2000000,0x10000,&cemu_clint));
+    assert(cemu_system_bus.add_dev(0xc000000,0x4000000,&cemu_plic));
     assert(cemu_system_bus.add_dev(0x60000000,1024*16,&cemu_boot_ram), "cemu boot ram");
     assert(cemu_system_bus.add_dev(0x60100000,1024*1024,&cemu_uart), "cemu uart");
     assert(cemu_system_bus.add_dev(0x80000000,2048l*1024l*1024l,&cemu_mem), "cemu mem");
@@ -204,6 +235,8 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
     axi4     <32,64,4> mmio_sigs;
     axi4_ref <32,64,4> mmio_sigs_ref(mmio_sigs);
     axi4_xbar<32,64,4> mmio;
+    rv_clint <2> clint;
+    rv_plic <4,4> plic;
 
     mmio_mem rtl_boot_ram(1024*16);
     rtl_boot_ram.do_write(0,12,(uint8_t*)&loader_instr);
@@ -213,6 +246,8 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
     // setup uart
     uartlite uart;
     std::thread *uart_input_thread = new std::thread(uart_input,std::ref(uart));
+    assert(mmio.add_dev(0x2000000,0x10000,&clint));
+    assert(mmio.add_dev(0xc000000,0x4000000,&plic));
     assert(mmio.add_dev(0x60000000,1024*16,&rtl_boot_ram), "mimo boot ram");
     assert(mmio.add_dev(0x60100000,0x10000,&uart), "mimo uart");
     assert(mmio.add_dev(0x80000000,2048l*1024l*1024l,&rtl_mem), "mimo mem");
@@ -228,7 +263,17 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
     uint64_t rst_ticks = 10;
     uint64_t ticks = 0;
     uint64_t last_commit = ticks;
+    uint64_t pc_cnt = print_pc_cycle;
     while (!Verilated::gotFinish() && sim_time > 0 && running) {
+        cemu_clint.tick();
+        cemu_plic.update_ext(1,uart.irq());
+        clint.tick();
+        plic.update_ext(1,uart.irq());
+        // void step(bool meip, bool msip, bool mtip, bool seip) {
+        top->MEI = plic.get_int(0);
+        top->MSI = clint.m_s_irq(0);
+        top->MTI = clint.m_t_irq(0);
+        // top->SEI = plic.get_int(1);
         if (rst_ticks  > 0) {
             top->reset = 1;
             rst_ticks --;
@@ -247,8 +292,13 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
             }
         }
         if (top->clock && top->debug_commit) { // instr retire
-            cemu_rvcore.step(0,0,0,0);
+            cemu_rvcore.step(cemu_plic.get_int(0),cemu_clint.m_s_irq(0),cemu_clint.m_t_irq(0),0);
             last_commit = ticks;
+            if (pc_cnt++ >= print_pc_cycle && print_pc)
+            {
+                printf("PC = 0x%016lx\n", cemu_rvcore.debug_pc);
+                pc_cnt = 0;
+            }
             if (top->debug_pc != cemu_rvcore.debug_pc || 
                 cemu_rvcore.debug_reg_num != 0 && (
                     top->debug_reg_num != cemu_rvcore.debug_reg_num || 
