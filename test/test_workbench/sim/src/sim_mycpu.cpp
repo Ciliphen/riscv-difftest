@@ -330,27 +330,15 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref) {
 }
 
 void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref, const char *riscv_test_path) {
-    // loader {
-    const uint64_t riscv_test_text_start = 0x80000000;
-    uint32_t loader_instr[3] = {
-        0x600010b7u,// lui	ra,0x60001
-        0x0000b083u,// ld	ra,0(ra) # 60001000
-        0x000080e7u // jalr	ra
-    };
-    // loader }
 
     // setup cemu {
     rv_systembus cemu_system_bus;
-    mmio_mem cemu_boot_ram(262144*4);
-    cemu_boot_ram.do_write(0,12,(uint8_t*)&loader_instr);
-    cemu_boot_ram.do_write(0x1000,8,(uint8_t*)&riscv_test_text_start);
     mmio_mem cemu_mem(128*1024*1024,riscv_test_path);
 
-    assert(cemu_system_bus.add_dev(0x60000000,262144*4,&cemu_boot_ram));
     assert(cemu_system_bus.add_dev(0x80000000,128*1024*1024,&cemu_mem));
 
     rv_core cemu_rvcore(cemu_system_bus);
-    cemu_rvcore.jump(0x60000000);
+    cemu_rvcore.jump(0x80000000);
     // setup cemu }
 
     // setup rtl {
@@ -358,12 +346,8 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref <32,64,4> &mmio_ref, const c
     axi4_ref <32,64,4> mmio_sigs_ref(mmio_sigs);
     axi4_xbar<32,64,4> mmio;
 
-    mmio_mem rtl_boot_ram(262144*4);
-    rtl_boot_ram.do_write(0,12,(uint8_t*)&loader_instr);
-    rtl_boot_ram.do_write(0x1000,8,(uint8_t*)&riscv_test_text_start);
     mmio_mem rtl_mem(128*1024*1024,riscv_test_path);
 
-    assert(mmio.add_dev(0x60000000,262144*4,&rtl_boot_ram));
     assert(mmio.add_dev(0x80000000,128*1024*1024,&rtl_mem));
     // setup rtl }
 
