@@ -261,7 +261,7 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     std::thread *uart_input_thread = new std::thread(uart_input, std::ref(uart));
     assert(mmio.add_dev(0x2000000, 0x10000, &clint));
     assert(mmio.add_dev(0xc000000, 0x4000000, &plic));
-    assert(mmio.add_dev(0x60100000, 0x10000, &uart), "mimo uart");
+    assert(mmio.add_dev(0x60100000, 1024 * 1024, &uart), "mimo uart");
     assert(mmio.add_dev(0x80000000, 2048l * 1024l * 1024l, &rtl_mem), "mimo mem");
     // setup rtl }
 
@@ -277,7 +277,7 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     while (!Verilated::gotFinish() && sim_time > 0 && running)
     {
         cemu_clint.tick();
-        cemu_plic.update_ext(1, uart.irq());
+        cemu_plic.update_ext(1, cemu_uart.irq());
         clint.tick();
         plic.update_ext(1, uart.irq());
         // void step(bool meip, bool msip, bool mtip, bool seip) {
@@ -467,6 +467,7 @@ int main(int argc, char **argv, char **env)
     {
         if (strcmp(argv[i], "-trace") == 0)
         {
+            trace_on = true;
             if (i + 1 < argc)
             {
                 sscanf(argv[++i], "%lu", &sim_time);
