@@ -11,6 +11,7 @@ bool running = true;
 bool run_riscv_test = false;
 bool dump_pc_history = false;
 bool print_pc = false;
+bool should_delay = false;
 const uint64_t commit_timeout = 500;
 const uint64_t print_pc_cycle = 1e5;
 long trace_start_time = 0; // -starttrace [time]
@@ -419,15 +420,16 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
                 printf("Error!\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
-                // if (dump_pc_history && delay == 10) cemu_rvcore.dump_pc_history();
-                // if (delay == 10) cemu_rvcore.dump_pc_history();
-                // if (delay-- == 0)
-                // {
-                //     running = false;
-                // }
-                if (dump_pc_history)
+                if (!should_delay)
+                {
+                    running = false;
+                    if (dump_pc_history)
+                        cemu_rvcore.dump_pc_history();
+                }
+                else if (dump_pc_history && delay-- == 10)
                     cemu_rvcore.dump_pc_history();
-                running = false;
+                else if (delay-- == 0)
+                    running = false;
             }
         }
         if (trace_on)
@@ -497,6 +499,10 @@ int main(int argc, char **argv, char **env)
         else if (strcmp(argv[i], "-printpc") == 0)
         {
             print_pc = true;
+        }
+        else if (strcmp(argv[i], "-delay") == 0)
+        {
+            should_delay = true;
         }
         else
         {

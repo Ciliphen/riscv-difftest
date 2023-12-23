@@ -7,7 +7,7 @@ CHISEL_DIR = ../../../../
 .PHONY: clean riscv-tests-build
 
 obj_dir/V$(TOP_NAME): src/* $(SRC_FILE) ../soft/start.bin
-	verilator --cc -Wno-fatal --exe --trace --trace-structs -LDFLAGS "-lpthread" --build src/sim_mycpu.cpp $(SRC_FILE) -I$(SRC_DIR) --top $(TOP_NAME) -j `nproc`
+	verilator --cc -Wno-fatal --exe --trace-fst --trace-structs -LDFLAGS "-lpthread" --build src/sim_mycpu.cpp $(SRC_FILE) -I$(SRC_DIR) --top $(TOP_NAME) -j `nproc`
 
 verilog:
 	$(MAKE) -C $(CHISEL_DIR) verilog
@@ -15,12 +15,16 @@ verilog:
 	$(MAKE) func
 
 func: obj_dir/V$(TOP_NAME)
-	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64mi-p-access.bin -rvtest -trace 10000 -pc
-	./obj_dir/Vtop_axi_wrapper -linux -printpc
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64mi-p-ld-misaligned.bin -rvtest -trace 10000 -pc
+	# ./obj_dir/Vtop_axi_wrapper -linux -pc -starttrace 2550000 -printpc
+	# ./obj_dir/Vtop_axi_wrapper -trace 10000 -pc
 	# ./run_riscv_test.py
 
 ../soft/start.bin:
 	cd ../soft && make
+
+copy:
+	cp  ~/test/opensbi/build/platform/generic/firmware/fw_payload.bin ./linux/
 
 riscv-tests:
 	git clone https://github.com/cyyself/riscv-tests.git -b cqu-co-lab-riscv
