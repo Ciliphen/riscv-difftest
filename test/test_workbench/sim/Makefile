@@ -15,9 +15,9 @@ verilog:
 	$(MAKE) func
 
 func: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64mi-p-ld-misaligned.bin -rvtest -trace 10000 -pc
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ua-p-amoadd_d.bin -rvtest -trace 100000 -pc
 	# ./obj_dir/Vtop_axi_wrapper -linux -pc -starttrace 2550000 -printpc
-	# ./obj_dir/Vtop_axi_wrapper -trace 10000 -pc
+	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
 	# ./run_riscv_test.py
 
 ../soft/start.bin:
