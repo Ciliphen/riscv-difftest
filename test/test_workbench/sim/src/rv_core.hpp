@@ -71,19 +71,22 @@ public:
     }
     void dump_pc_history()
     {
-        printf("----- PC HISTORY BEGIN-----\n");
+        printf("----- PC INST HISTORY BEGIN-----\n");
         while (!trace.empty())
         {
             uint64_t pc_history = trace.front();
+            uint64_t inst_history = inst_trace.front();
             trace.pop();
-            printf("%016lx\n", pc_history);
+            inst_trace.pop();
+            printf("pc: %016lx inst: %016lx\n", pc_history, inst_history);
         }
-        printf("----- PC HISTORY  END  -----\n");
+        printf("----- PC INST HISTORY  END  -----\n");
     }
 
 private:
     uint32_t trace_size = run_riscv_test ? 32 : 0;
     std::queue<uint64_t> trace;
+    std::queue<uint64_t> inst_trace;
     rv_systembus &systembus;
     uint64_t pc = 0;
     rv_priv priv;
@@ -121,11 +124,18 @@ private:
             goto exception;
         }
         if_exc = priv.va_if(pc, 4, (uint8_t *)&cur_instr, pc_bad_va);
+        if (trace_size)
+        {
+            inst_trace.push(cur_instr);
+            while (inst_trace.size() > trace_size)
+                inst_trace.pop();
+        }
         if (if_exc != exc_custom_ok)
         {
             priv.raise_trap(csr_cause_def(if_exc), pc_bad_va);
             goto exception;
         }
+        
     decode_exec:
         is_rvc = (inst->r_type.opcode & 0b11) != 0b11;
         if (!is_rvc)
