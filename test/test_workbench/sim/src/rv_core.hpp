@@ -84,7 +84,7 @@ public:
     }
 
 private:
-    uint32_t trace_size = run_riscv_test ? 32 : 0;
+    uint32_t trace_size = 32;
     std::queue<uint64_t> trace;
     std::queue<uint64_t> inst_trace;
     rv_systembus &systembus;

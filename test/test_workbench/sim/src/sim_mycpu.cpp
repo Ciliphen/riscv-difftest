@@ -12,6 +12,7 @@ bool run_riscv_test = false;
 bool dump_pc_history = false;
 bool print_pc = false;
 bool should_delay = false;
+bool dual_issue = true;
 const uint64_t commit_timeout = 3000;
 const uint64_t print_pc_cycle = 1e5;
 long trace_start_time = 0; // -starttrace [time]
@@ -184,7 +185,7 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
                 fflush(stdout);
             }
         }
-        if (top->clock && top->debug_commit)
+        if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
         { // instr retire
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
@@ -309,7 +310,7 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
                 fflush(stdout);
             }
         }
-        if (top->clock && top->debug_commit)
+        if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
         { // instr retire
             cemu_rvcore.step(cemu_plic.get_int(0), cemu_clint.m_s_irq(0), cemu_clint.m_t_irq(0), 0);
             last_commit = ticks;
@@ -411,7 +412,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
             mmio_sigs.update_output(mmio_ref);
             top->eval();
         }
-        if (top->clock && top->debug_commit)
+        if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
         { // instr retire
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;

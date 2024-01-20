@@ -15,10 +15,11 @@ verilog:
 	$(MAKE) func
 
 func: obj_dir/V$(TOP_NAME)
-	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ua-v-lrsc.bin -rvtest -trace 100000 -pc
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ua-v-lrsc.bin -rvtest -trace 100000 -pc
 	# ./obj_dir/Vtop_axi_wrapper -linux -pc -starttrace 2550000 -printpc
+	# ./obj_dir/Vtop_axi_wrapper -linux -pc -trace 100000
 	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
-	./run_riscv_test.py
+	# ./run_riscv_test.py
 
 ../soft/start.bin:
 	cd ../soft && make
