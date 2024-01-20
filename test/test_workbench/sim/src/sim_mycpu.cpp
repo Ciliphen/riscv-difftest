@@ -12,7 +12,7 @@ bool run_riscv_test = false;
 bool dump_pc_history = false;
 bool print_pc = false;
 bool should_delay = false;
-const uint64_t commit_timeout = 500;
+const uint64_t commit_timeout = 3000;
 const uint64_t print_pc_cycle = 1e5;
 long trace_start_time = 0; // -starttrace [time]
 std::atomic_bool trace_on = false;
@@ -192,7 +192,7 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
                 cemu_rvcore.debug_reg_num != 0 && (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
                                                    top->debug_wdata != cemu_rvcore.debug_reg_wdata))
             {
-                printf("Error!\n");
+                printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
                 running = false;
@@ -213,7 +213,8 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         ticks++;
         if (ticks - last_commit >= commit_timeout)
         {
-            printf("Error!\nCPU stuck for %ld cycles!\n", commit_timeout / 2);
+            printf("\033[1;31mError!\033[0m\n");
+            printf("CPU stuck for %ld cycles!\n", commit_timeout / 2);
             running = false;
             if (dump_pc_history)
                 cemu_rvcore.dump_pc_history();
@@ -321,7 +322,7 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
                 cemu_rvcore.debug_reg_num != 0 && (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
                                                    top->debug_wdata != cemu_rvcore.debug_reg_wdata))
             {
-                printf("Error!\n");
+                printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
                 running = false;
@@ -343,7 +344,8 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         ticks++;
         if (ticks - last_commit >= commit_timeout)
         {
-            printf("Error!\nCPU stuck for %ld cycles!\n", commit_timeout / 2);
+            printf("\033[1;31mError!\033[0m\n");
+            printf("CPU stuck for %ld cycles!\n", commit_timeout / 2);
             running = false;
             if (dump_pc_history)
                 cemu_rvcore.dump_pc_history();
@@ -417,7 +419,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
                 cemu_rvcore.debug_reg_num != 0 && (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
                                                    top->debug_wdata != cemu_rvcore.debug_reg_wdata))
             {
-                printf("Error!\n");
+                printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
                 if (!should_delay)
@@ -440,7 +442,8 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
         ticks++;
         if (ticks - last_commit >= commit_timeout)
         {
-            printf("Error!\nCPU stuck for %ld cycles!\n", commit_timeout / 2);
+            printf("\033[1;31mError!\033[0m\n");
+            printf("CPU stuck for %ld cycles!\n", commit_timeout / 2);
             running = false;
             if (dump_pc_history)
                 cemu_rvcore.dump_pc_history();

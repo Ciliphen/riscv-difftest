@@ -31,6 +31,7 @@ public:
     }
     bool pa_write(uint64_t start_addr, uint64_t size, const uint8_t *buffer)
     {
+        // printf("write addr: %lx size: %lx write data: %lx\n", start_addr, size, *((uint64_t *)&buffer));
         if (start_addr <= lr_pa && lr_pa + size <= start_addr + size)
         {
             lr_valid = false;

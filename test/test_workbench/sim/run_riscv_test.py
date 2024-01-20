@@ -4,7 +4,8 @@ import os
 # build riscv-tests to this folder
 BUILD_DIR = "riscv-tests-build/isa"
 DST_DIR = "./tests-bin"
-TEST_PRIFIX = ["rv64ui-p-","rv64um-p-","rv64mi-p-","rv64ua-p-"]
+TEST_PRIFIX = ["rv64ui-p-","rv64um-p-","rv64mi-p-","rv64ua-p-","rv64si-p-"]
+TEST_PRIFIX += ["rv64ui-v-","rv64um-v-","rv64ua-v-"]
 RISCV_PREFIX = "riscv64-unknown-linux-gnu-"
 
 file_list = []

@@ -709,6 +709,8 @@ public:
         }
         if (trap_to_s)
         {
+            // printf("trap to s\n");
+            // printf("pc = 0x%lx\n", cur_pc);
             stval = tval;
             scause = *((uint64_t *)&cause);
             sepc = cur_pc;

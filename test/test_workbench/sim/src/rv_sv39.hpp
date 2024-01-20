@@ -77,7 +77,6 @@ public:
         assert((va_struct->blank == 0b1111111111111111111111111 && (va_struct->vpn_2 >> 8)) || (va_struct->blank == 0 && ((va_struct->vpn_2 >> 8) == 0)));
         // we should raise access fault before call sv39
         sv39_tlb_entry *res = local_tlb_get(satp, va);
-        // printf("va=%lx\n", va);
         if (res)
         {
 #ifdef MM_SANITIZER
@@ -100,11 +99,11 @@ public:
             mmassert(res->A <= pte2.A, *((uint64_t *)&satp), va, "A");
             mmassert(res->D <= pte2.D, *((uint64_t *)&satp), va, "D");
 #endif
-            // printf("tlb hit\n");
             return res; // 如果tlb hit，直接返回
         }
         // 如果tlb miss，需要进行ptw
         // slow path, ptw
+        // printf("va = %lx\n", va);
         // printf("tlb miss\n");
         sv39_pte pte;
         uint64_t page_size;
@@ -148,7 +147,9 @@ private:
         sv39_pte pte;
         for (int i = 2; i >= 0; i--)
         {
+            // printf("ptw: va=%lx\n", pt_addr + ((i == 2 ? va->vpn_2 : (i == 1 ? va->vpn_1 : va->vpn_0)) * sizeof(sv39_pte)));
             bool res = bus.pa_read(pt_addr + ((i == 2 ? va->vpn_2 : (i == 1 ? va->vpn_1 : va->vpn_0)) * sizeof(sv39_pte)), sizeof(sv39_pte), (uint8_t *)&pte);
+            // printf("pte: %lx\n", *((uint64_t *)&pte));
             if (!res)
             {
                 // invalid pte address
