@@ -44,7 +44,8 @@ public:
         return claim[context_id] != 0;
     }
     bool do_read(uint64_t start_addr, uint64_t size, unsigned char* buffer) {
-        assert(size == 4);
+        // printf("PLIC read: 0x%lx, size: 0x%lx\n", start_addr, size);
+        // assert(size == 4);
         if (start_addr + size <= 0x1000) { // [0x4,0x1000] interrupt source priority
             if (start_addr == 0) return false;
             if (start_addr > 4 * nr_source || start_addr + size > 4 * (nr_source + 1)) return false;

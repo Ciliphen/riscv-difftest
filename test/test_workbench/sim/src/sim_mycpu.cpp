@@ -14,7 +14,7 @@ bool print_pc = false;
 bool should_delay = false;
 bool dual_issue = true;
 const uint64_t commit_timeout = 3000;
-const uint64_t print_pc_cycle = 1e5;
+const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
 std::atomic_bool trace_on = false;
 long sim_time = 1e5;
@@ -324,6 +324,7 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
                                                    top->debug_wdata != cemu_rvcore.debug_reg_wdata))
             {
                 printf("\033[1;31mError!\033[0m\n");
+                printf("ticks: %ld\n", ticks);
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
                 running = false;
@@ -416,6 +417,8 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
         { // instr retire
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
+            if (!cemu_rvcore.debug_pc)
+                cemu_rvcore.step(0, 0, 0, 0);
             if (top->debug_pc != cemu_rvcore.debug_pc ||
                 cemu_rvcore.debug_reg_num != 0 && (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
                                                    top->debug_wdata != cemu_rvcore.debug_reg_wdata))

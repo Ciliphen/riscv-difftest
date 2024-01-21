@@ -692,7 +692,6 @@ public:
         assert(!cur_need_trap);
         cur_need_trap = true;
         bool trap_to_s = false;
-        // printf("trap %ld, tval = 0x%lx, pc=0x%lx, mode=%d\n",cause.cause,tval,cur_pc,cur_priv);
         // check delegate to s
         if (cur_priv != M_MODE)
         {
@@ -735,6 +734,10 @@ public:
             trap_pc = (tvec->base << 2) + (tvec->mode ? (cause.cause) * 4 : 0);
             next_priv = M_MODE;
         }
+        // printf("trap %ld, tval = 0x%lx, pc=0x%lx, mode=%d\n", cause.cause, tval, cur_pc, cur_priv);
+        // printf("stval = 0x%lx, scause = 0x%lx, sepc = 0x%lx\n", stval, scause, sepc);
+        // printf("mtval = 0x%lx, mcause = 0x%lx, mepc = 0x%lx\n", mtval, mcause, mepc);
+
         if (cause.cause == exc_instr_pgfault && tval == trap_pc)
             assert(false);
     }

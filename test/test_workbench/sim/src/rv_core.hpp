@@ -1193,6 +1193,12 @@ private:
     }
     bool mem_write(uint64_t start_addr, uint64_t size, const uint8_t *buffer)
     {
+        // if (start_addr==0x80043c20)
+        // {
+        //     printf("pc:0x%lx\n",pc);
+        //     printf("start_addr:0x%lx\n",start_addr);
+        // }
+        
         if (start_addr % size != 0)
         {
             priv.raise_trap(csr_cause_def(exc_store_misalign), start_addr);
