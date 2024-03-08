@@ -230,9 +230,7 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
 
 void linux_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
 {
-    // const char *load_path = "./linux/vmlinux";
     const char *load_path = "./linux/fw_payload.bin";
-    // const char *load_path = "../soft/start.bin";
 
     // setup cemu {
     rv_systembus cemu_system_bus;
