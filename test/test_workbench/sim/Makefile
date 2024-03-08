@@ -1,8 +1,8 @@
 TOP_NAME := top_axi_wrapper
 SRC_DIR  := ../../../core/
 SRC_FILE := $(shell find $(SRC_DIR) -name '*.svh') $(shell find $(SRC_DIR) -name '*.v') $(shell find $(SRC_DIR) -name '*.sv')
-BUILD_DIR = ../../../../build
-CHISEL_DIR = ../../../../
+BUILD_DIR = ../../../../chisel/build
+CHISEL_DIR = ../../../../chisel/
 
 .PHONY: clean riscv-tests-build
 
@@ -28,7 +28,7 @@ copy:
 	cp  ~/test/opensbi/build/platform/generic/firmware/fw_payload.bin ./linux/
 
 riscv-tests:
-	git clone https://github.com/cyyself/riscv-tests.git -b cqu-co-lab-riscv
+	git clone git@github.com:cyyself/riscv-tests.git -b cqu-co-lab-riscv
 	cd riscv-tests && git submodule update --init --recursive && autoupdate && autoconf && ./configure
 
 riscv-tests-build: riscv-tests
