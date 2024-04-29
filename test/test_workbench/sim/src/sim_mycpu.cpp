@@ -6,6 +6,7 @@
 #include "rv_core.hpp"
 #include "rv_clint.hpp"
 #include "rv_plic.hpp"
+#include <stdio.h>
 
 bool running = true;
 bool run_riscv_test = false;
@@ -13,6 +14,7 @@ bool dump_pc_history = false;
 bool print_pc = false;
 bool should_delay = false;
 bool dual_issue = true;
+bool golden_trace = false;
 const uint64_t commit_timeout = 3000;
 const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
@@ -388,6 +390,16 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
         fst.open("trace.fst");
     }
 
+    FILE *golden_trace_file;
+    if (golden_trace)
+    {
+        golden_trace_file = fopen("golden_trace.txt", "w");
+        if (golden_trace_file == NULL)
+        {
+            printf("Error opening file!\n");
+        }
+    }
+
     uint64_t rst_ticks = 10;
     uint64_t ticks = 0;
     uint64_t last_commit = ticks;
@@ -413,6 +425,10 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
         }
         if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
         { // instr retire
+            if (top->debug_commit != 0 && top->debug_reg_num != 0 && golden_trace)
+            {
+                fprintf(golden_trace_file, "1 %016lx %02x %016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
+            }
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
             if (!cemu_rvcore.debug_pc)
@@ -452,6 +468,8 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
         }
     }
     printf("total_ticks: %lu\n", ticks);
+    if (golden_trace)
+        fclose(golden_trace_file);
 }
 
 int main(int argc, char **argv, char **env)
@@ -508,6 +526,10 @@ int main(int argc, char **argv, char **env)
         else if (strcmp(argv[i], "-delay") == 0)
         {
             should_delay = true;
+        }
+        else if (strcmp(argv[i], "-golden_trace") == 0)
+        {
+            golden_trace = true;
         }
         else
         {

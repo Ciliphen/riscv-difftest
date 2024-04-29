@@ -7,3 +7,4 @@ test/test_workbench/soft/
 core/
 !core/top_axi_wrapper.v
 test/test_workbench/sim/trace.fst
+test/test_workbench/sim/golden_trace.txt
