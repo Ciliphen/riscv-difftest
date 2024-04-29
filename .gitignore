@@ -9,3 +9,7 @@ core/
 test/test_workbench/sim/trace.fst
 test/test_workbench/sim/golden_trace.txt
 test/test_workbench/sim/*.bin
+
+test/test_workbench/sim/gen_bin/build/*.bin
+test/test_workbench/sim/gen_bin/build/*.o
+test/test_workbench/sim/gen_bin/build/*.s
