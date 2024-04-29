@@ -389,17 +389,6 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
         top->trace(&fst, 0);
         fst.open("trace.fst");
     }
-
-    FILE *golden_trace_file;
-    if (golden_trace)
-    {
-        golden_trace_file = fopen("golden_trace.txt", "w");
-        if (golden_trace_file == NULL)
-        {
-            printf("Error opening file!\n");
-        }
-    }
-
     uint64_t rst_ticks = 10;
     uint64_t ticks = 0;
     uint64_t last_commit = ticks;
@@ -425,10 +414,6 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
         }
         if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
         { // instr retire
-            if (top->debug_commit != 0 && top->debug_reg_num != 0 && golden_trace)
-            {
-                fprintf(golden_trace_file, "1 %016lx %02x %016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
-            }
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
             if (!cemu_rvcore.debug_pc)
@@ -468,8 +453,121 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
         }
     }
     printf("total_ticks: %lu\n", ticks);
-    if (golden_trace)
-        fclose(golden_trace_file);
+}
+
+void make_golden_trace(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const char *riscv_test_path)
+{
+
+    // setup cemu {
+    rv_systembus cemu_system_bus;
+    mmio_mem cemu_mem(128 * 1024 * 1024, riscv_test_path);
+
+    assert(cemu_system_bus.add_dev(0x80000000, 128 * 1024 * 1024, &cemu_mem));
+
+    rv_core cemu_rvcore(cemu_system_bus);
+    cemu_rvcore.jump(0x80000000);
+    // setup cemu }
+
+    // setup rtl {
+    axi4<32, 64, 4> mmio_sigs;
+    axi4_ref<32, 64, 4> mmio_sigs_ref(mmio_sigs);
+    axi4_xbar<32, 64, 4> mmio;
+
+    mmio_mem rtl_mem(128 * 1024 * 1024, riscv_test_path);
+
+    assert(mmio.add_dev(0x80000000, 128 * 1024 * 1024, &rtl_mem));
+    // setup rtl }
+
+    // connect Vcd for trace
+    if (trace_on)
+    {
+        top->trace(&fst, 0);
+        fst.open("trace.fst");
+    }
+
+    FILE *golden_trace_file;
+    golden_trace_file = fopen("golden_trace.txt", "w");
+    if (golden_trace_file == NULL)
+    {
+        printf("Error opening file!\n");
+    }
+
+    uint64_t rst_ticks = 10;
+    uint64_t ticks = 0;
+    uint64_t last_commit = ticks;
+    int delay = 10;
+    while (!Verilated::gotFinish() && sim_time > 0 && running)
+    {
+        if (rst_ticks > 0)
+        {
+            top->reset = 1;
+            rst_ticks--;
+        }
+        else
+            top->reset = 0;
+        top->clock = !top->clock;
+        if (top->clock && !top->reset)
+            mmio_sigs.update_input(mmio_ref);
+        top->eval();
+        if (top->clock && !top->reset)
+        {
+            mmio.beat(mmio_sigs_ref);
+            mmio_sigs.update_output(mmio_ref);
+            top->eval();
+        }
+        if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
+        { // instr retire
+            if (top->debug_commit != 0 && top->debug_reg_num != 0)
+            {
+                fprintf(golden_trace_file, "1 %016lx %02x %016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
+            }
+            cemu_rvcore.step(0, 0, 0, 0);
+            last_commit = ticks;
+            if (!cemu_rvcore.debug_pc)
+                cemu_rvcore.step(0, 0, 0, 0);
+            if (top->debug_pc == 4 && cemu_rvcore.debug_pc == 0)
+            {
+                printf("Test passed!\n");
+                running = false;
+            }
+            if ((top->debug_pc != cemu_rvcore.debug_pc ||
+                 cemu_rvcore.debug_reg_num != 0 &&
+                     (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
+                      top->debug_wdata != cemu_rvcore.debug_reg_wdata)) &&
+                running)
+            {
+                printf("\033[1;31mError!\033[0m\n");
+                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
+                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
+                if (!should_delay)
+                {
+                    running = false;
+                    if (dump_pc_history)
+                        cemu_rvcore.dump_pc_history();
+                }
+                else if (dump_pc_history && delay-- == 10)
+                    cemu_rvcore.dump_pc_history();
+                else if (delay-- == 0)
+                    running = false;
+            }
+        }
+        if (trace_on)
+        {
+            fst.dump(ticks);
+            sim_time--;
+        }
+        ticks++;
+        if (ticks - last_commit >= commit_timeout)
+        {
+            printf("\033[1;31mError!\033[0m\n");
+            printf("CPU stuck for %ld cycles!\n", commit_timeout / 2);
+            running = false;
+            if (dump_pc_history)
+                cemu_rvcore.dump_pc_history();
+        }
+    }
+    printf("total_ticks: %lu\n", ticks);
+    fclose(golden_trace_file);
 }
 
 int main(int argc, char **argv, char **env)
@@ -554,7 +652,14 @@ int main(int argc, char **argv, char **env)
         workbench_run(top, mmio_ref);
         break;
     case RISCV_TEST:
-        riscv_test_run(top, mmio_ref, file_load_path);
+        if (golden_trace)
+        {
+            make_golden_trace(top, mmio_ref, file_load_path);
+        }
+        else
+        {
+            riscv_test_run(top, mmio_ref, file_load_path);
+        }
         break;
     case LINUX_RUN:
         linux_run(top, mmio_ref);
