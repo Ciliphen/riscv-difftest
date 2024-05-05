@@ -3,13 +3,13 @@
 obj_dir
 *.gtkw
 
-test/test_workbench/soft/
+test/soft/
 core/
 !core/top_axi_wrapper.v
-test/test_workbench/sim/trace.fst
-test/test_workbench/sim/golden_trace.txt
-test/test_workbench/sim/*.bin
+test/sim/trace.fst
+test/sim/golden_trace.txt
+test/sim/*.bin
 
-test/test_workbench/sim/gen_bin/build/*.bin
-test/test_workbench/sim/gen_bin/build/*.o
-test/test_workbench/sim/gen_bin/build/*.s
+test/sim/gen_bin/build/*.bin
+test/sim/gen_bin/build/*.o
+test/sim/gen_bin/build/*.s
