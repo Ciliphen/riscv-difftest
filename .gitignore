@@ -10,6 +10,4 @@ test/sim/trace.fst
 test/sim/golden_trace.txt
 test/sim/*.bin
 
-test/sim/gen_bin/build/*.bin
-test/sim/gen_bin/build/*.o
-test/sim/gen_bin/build/*.s
+test/sim/gen_bin/build/*
