@@ -284,6 +284,141 @@ void linux_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         clint.tick();
         plic.update_ext(1, uart.irq());
         // void step(bool meip, bool msip, bool mtip, bool seip) {
+        top->MEI = plic.get_int(0) | plic.get_int(1);
+        top->MSI = clint.m_s_irq(0);
+        top->MTI = clint.m_t_irq(0);
+        // top->SEI = plic.get_int(1);
+        if (rst_ticks > 0)
+        {
+            top->reset = 1;
+            rst_ticks--;
+        }
+        else
+            top->reset = 0;
+        top->clock = !top->clock;
+        if (top->clock && !top->reset)
+            mmio_sigs.update_input(mmio_ref);
+        top->eval();
+        if (top->clock && !top->reset)
+        {
+            mmio.beat(mmio_sigs_ref);
+            mmio_sigs.update_output(mmio_ref);
+            top->eval();
+            if (uart.exist_tx())
+            {
+                printf("%c", uart.getc());
+                fflush(stdout);
+            }
+        }
+        if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
+        { // instr retire
+            cemu_rvcore.step(cemu_plic.get_int(0), cemu_clint.m_s_irq(0), cemu_clint.m_t_irq(0), cemu_plic.get_int(1));
+            last_commit = ticks;
+            if (pc_cnt++ >= print_pc_cycle && print_pc)
+            {
+                printf("PC = 0x%016lx\n", cemu_rvcore.debug_pc);
+                pc_cnt = 0;
+            }
+            if (top->debug_pc != cemu_rvcore.debug_pc ||
+                cemu_rvcore.debug_reg_num != 0 && (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
+                                                   top->debug_wdata != cemu_rvcore.debug_reg_wdata))
+            {
+                printf("\033[1;31mError!\033[0m\n");
+                printf("ticks: %ld\n", ticks);
+                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
+                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
+                running = false;
+                if (dump_pc_history)
+                    cemu_rvcore.dump_pc_history();
+            }
+        }
+        if (trace_on)
+        {
+            top->eval();
+            fst.dump(ticks);
+            sim_time--;
+        }
+        // conditinal trace
+        if (trace_start_time != 0 && ticks == trace_start_time)
+        {
+            open_trace();
+        }
+        ticks++;
+        if (ticks - last_commit >= commit_timeout)
+        {
+            printf("\033[1;31mError!\033[0m\n");
+            printf("CPU stuck for %ld cycles!\n", commit_timeout / 2);
+            running = false;
+            if (dump_pc_history)
+                cemu_rvcore.dump_pc_history();
+        }
+    }
+    top->final();
+    if (trace_on)
+        fst.close();
+    pthread_kill(uart_input_thread->native_handle(), SIGKILL);
+    printf("total_ticks: %lu\n", ticks);
+}
+
+void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
+{
+    const char *opensbi_load_path = "./os/opensbi-qemu.bin";
+    const char *os_load_path = "./os/kernel-qemu.bin";
+
+    // setup cemu {
+    rv_systembus cemu_system_bus;
+    mmio_mem cemu_opensbi(0x200000, opensbi_load_path);
+    mmio_mem cemu_os(0x200000, os_load_path);
+    uartlite cemu_uart;
+    rv_clint<2> cemu_clint;
+    rv_plic<4, 4> cemu_plic;
+
+    assert(cemu_system_bus.add_dev(0x02000000, 0x10000, &cemu_clint));
+    assert(cemu_system_bus.add_dev(0x0c000000, 0x4000000, &cemu_plic));
+    assert(cemu_system_bus.add_dev(0x10000000, 1024 * 1024, &cemu_uart), "uart");
+    assert(cemu_system_bus.add_dev(0x80000000, 0x200000, &cemu_opensbi), "opensbi");
+    assert(cemu_system_bus.add_dev(0x80200000, 0x200000, &cemu_os), "os");
+
+    rv_core cemu_rvcore(cemu_system_bus);
+    cemu_rvcore.jump(0x80000000);
+    // setup cemu }
+
+    // setup rtl {
+    axi4<32, 64, 4> mmio_sigs;
+    axi4_ref<32, 64, 4> mmio_sigs_ref(mmio_sigs);
+    axi4_xbar<32, 64, 4> mmio;
+    rv_clint<2> clint;
+    rv_plic<4, 4> plic;
+
+    mmio_mem opensbi(0x200000, opensbi_load_path);
+    mmio_mem os(0x200000, os_load_path);
+
+    // setup uart
+    uartlite uart;
+    std::thread *uart_input_thread = new std::thread(uart_input, std::ref(uart));
+    assert(mmio.add_dev(0x02000000, 0x10000, &clint));
+    assert(mmio.add_dev(0x0c000000, 0x4000000, &plic));
+    assert(mmio.add_dev(0x10000000, 1024 * 1024, &uart), "uart");
+    assert(mmio.add_dev(0x80000000, 0x200000, &opensbi), "opensbi");
+    assert(mmio.add_dev(0x80200000, 0x200000, &os), "os");
+    // setup rtl }
+
+    // connect fst for trace
+    top->trace(&fst, 0);
+    if (trace_on)
+        open_trace();
+
+    uint64_t rst_ticks = 10;
+    uint64_t ticks = 0;
+    uint64_t last_commit = ticks;
+    uint64_t pc_cnt = print_pc_cycle;
+    while (!Verilated::gotFinish() && sim_time > 0 && running)
+    {
+        cemu_clint.tick();
+        cemu_plic.update_ext(1, cemu_uart.irq());
+        clint.tick();
+        plic.update_ext(1, uart.irq());
+        // void step(bool meip, bool msip, bool mtip, bool seip) {
         top->MEI = plic.get_int(0);
         top->MSI = clint.m_s_irq(0);
         top->MTI = clint.m_t_irq(0);
@@ -583,7 +718,8 @@ int main(int argc, char **argv, char **env)
         NOP,
         WORKBENCH,
         RISCV_TEST,
-        LINUX_RUN
+        LINUX_RUN,
+        OS_RUN
     } run_mode = WORKBENCH;
 
     for (int i = 1; i < argc; i++)
@@ -612,6 +748,9 @@ int main(int argc, char **argv, char **env)
         else if (strcmp(argv[i], "-linux") == 0)
         {
             run_mode = LINUX_RUN;
+        }
+        else if (strcmp(argv[i], "-os") == 0){
+            run_mode = OS_RUN;
         }
         else if (strcmp(argv[i], "-pc") == 0)
         {
@@ -663,6 +802,9 @@ int main(int argc, char **argv, char **env)
         break;
     case LINUX_RUN:
         linux_run(top, mmio_ref);
+        break;
+    case OS_RUN:
+        os_run(top, mmio_ref);
         break;
     default:
         printf("Unknown running mode.\n");

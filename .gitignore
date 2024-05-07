@@ -1,7 +1,6 @@
 .*
 *.vcd
 obj_dir
-*.gtkw
 
 test/soft/
 core/
@@ -11,3 +10,4 @@ test/sim/golden_trace.txt
 test/sim/*.bin
 
 test/sim/gen_bin/build/*
+test/sim/trace.txt

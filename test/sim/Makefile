@@ -15,9 +15,10 @@ verilog:
 	$(MAKE) func
 
 func: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ua-v-lrsc.bin -rvtest -trace 100000 -pc
+	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ua-v-lrsc.bin -rvtest -trace 100000 -pc
 	# ./obj_dir/Vtop_axi_wrapper -linux -pc -starttrace 127940000 -printpc
-	# ./obj_dir/Vtop_axi_wrapper -linux -pc -printpc
+	# ./obj_dir/Vtop_axi_wrapper -linux -pc -printpc -trace 1000000
+	./obj_dir/Vtop_axi_wrapper -linux -pc -printpc
 	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
 	# ./run_riscv_test.py
 
@@ -35,7 +36,7 @@ riscv-tests:
 
 riscv-tests-build: riscv-tests
 	mkdir -p riscv-tests-build
-	make -C riscv-tests-build -f ../riscv-tests/Makefile RISCV_PREFIX=riscv64-unknown-linux-gnu- isa
+	make -C riscv-tests-build -f ../riscv-tests/Makefile RISCV_PREFIX=riscv64-unknown-linux-gnu- benchmarks
 
 clean:
 	rm -rf obj_dir
