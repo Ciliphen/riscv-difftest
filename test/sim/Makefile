@@ -12,14 +12,21 @@ obj_dir/V$(TOP_NAME): src/* $(SRC_FILE) ../soft/start.bin
 verilog:
 	$(MAKE) -C $(CHISEL_DIR) verilog
 	cp $(CHISEL_DIR)/build/PuaCpu.v $(SRC_DIR)
-	$(MAKE) func
+	$(MAKE) no_trace
+
+no_trace: obj_dir/V$(TOP_NAME)
+	./obj_dir/Vtop_axi_wrapper -os -pc -printpc 
+
+no_diff: obj_dir/V$(TOP_NAME)
+	./obj_dir/Vtop_axi_wrapper -os -pc -printpc -nodiff
 
 func: obj_dir/V$(TOP_NAME)
 	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ua-v-lrsc.bin -rvtest -trace 100000 -pc
 	# ./obj_dir/Vtop_axi_wrapper -linux -pc -starttrace 127940000 -printpc
+	# ./obj_dir/Vtop_axi_wrapper -linux -pc
 	# ./obj_dir/Vtop_axi_wrapper -linux -pc -printpc -trace 1000000
-	# ./obj_dir/Vtop_axi_wrapper -os -pc -printpc -nodiff
-	./obj_dir/Vtop_axi_wrapper -os -pc -printpc
+	./obj_dir/Vtop_axi_wrapper -os -pc -printpc -starttrace 16300000 #-nodiff
+	# ./obj_dir/Vtop_axi_wrapper -os -pc -printpc
 	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
 	# ./run_riscv_test.py
 
@@ -37,7 +44,8 @@ riscv-tests:
 
 riscv-tests-build: riscv-tests
 	mkdir -p riscv-tests-build
-	make -C riscv-tests-build -f ../riscv-tests/Makefile RISCV_PREFIX=riscv64-unknown-linux-gnu- benchmarks
+	# make -C riscv-tests-build -f ../riscv-tests/Makefile RISCV_PREFIX=riscv64-unknown-linux-gnu- benchmarks
+	make -C riscv-tests-build -f ../riscv-tests/Makefile RISCV_PREFIX=riscv64-unknown-linux-gnu- isa
 
 clean:
 	rm -rf obj_dir
