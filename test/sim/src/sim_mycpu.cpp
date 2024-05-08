@@ -15,6 +15,7 @@ bool print_pc = false;
 bool should_delay = false;
 bool dual_issue = true;
 bool golden_trace = false;
+bool difftest = true;
 const uint64_t commit_timeout = 3000;
 const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
@@ -375,7 +376,7 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
 
     assert(cemu_system_bus.add_dev(0x02000000, 0x10000, &cemu_clint));
     assert(cemu_system_bus.add_dev(0x0c000000, 0x4000000, &cemu_plic));
-    assert(cemu_system_bus.add_dev(0x10000000, 1024 * 1024, &cemu_uart), "uart");
+    assert(cemu_system_bus.add_dev(0x10000000, 0x1000, &cemu_uart), "uart");
     assert(cemu_system_bus.add_dev(0x80000000, 0x200000, &cemu_opensbi), "opensbi");
     assert(cemu_system_bus.add_dev(0x80200000, 0x200000, &cemu_os), "os");
 
@@ -398,7 +399,7 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     std::thread *uart_input_thread = new std::thread(uart_input, std::ref(uart));
     assert(mmio.add_dev(0x02000000, 0x10000, &clint));
     assert(mmio.add_dev(0x0c000000, 0x4000000, &plic));
-    assert(mmio.add_dev(0x10000000, 1024 * 1024, &uart), "uart");
+    assert(mmio.add_dev(0x10000000, 0x1000, &uart), "uart");
     assert(mmio.add_dev(0x80000000, 0x200000, &opensbi), "opensbi");
     assert(mmio.add_dev(0x80200000, 0x200000, &os), "os");
     // setup rtl }
@@ -454,9 +455,9 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
                 printf("PC = 0x%016lx\n", cemu_rvcore.debug_pc);
                 pc_cnt = 0;
             }
-            if (top->debug_pc != cemu_rvcore.debug_pc ||
-                cemu_rvcore.debug_reg_num != 0 && (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
-                                                   top->debug_wdata != cemu_rvcore.debug_reg_wdata))
+            if (difftest && (top->debug_pc != cemu_rvcore.debug_pc ||
+                             cemu_rvcore.debug_reg_num != 0 && (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
+                                                                top->debug_wdata != cemu_rvcore.debug_reg_wdata)))
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("ticks: %ld\n", ticks);
@@ -749,24 +750,29 @@ int main(int argc, char **argv, char **env)
         {
             run_mode = LINUX_RUN;
         }
-        else if (strcmp(argv[i], "-os") == 0){
+        else if (strcmp(argv[i], "-os") == 0)
+        {
             run_mode = OS_RUN;
         }
-        else if (strcmp(argv[i], "-pc") == 0)
+        else if (strcmp(argv[i], "-pc") == 0) // 打印历史PC
         {
             dump_pc_history = true;
         }
-        else if (strcmp(argv[i], "-printpc") == 0)
+        else if (strcmp(argv[i], "-printpc") == 0) // 间隔一定时间输出一次PC
         {
             print_pc = true;
         }
-        else if (strcmp(argv[i], "-delay") == 0)
+        else if (strcmp(argv[i], "-delay") == 0) // 出错后延迟一段时间再停止
         {
             should_delay = true;
         }
-        else if (strcmp(argv[i], "-golden_trace") == 0)
+        else if (strcmp(argv[i], "-golden_trace") == 0) // 生成golden trace
         {
             golden_trace = true;
+        }
+        else if (strcmp(argv[i], "-nodiff") == 0) // 不进行diff测试
+        {
+            difftest = false;
         }
         else
         {

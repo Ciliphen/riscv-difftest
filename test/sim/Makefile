@@ -18,7 +18,8 @@ func: obj_dir/V$(TOP_NAME)
 	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ua-v-lrsc.bin -rvtest -trace 100000 -pc
 	# ./obj_dir/Vtop_axi_wrapper -linux -pc -starttrace 127940000 -printpc
 	# ./obj_dir/Vtop_axi_wrapper -linux -pc -printpc -trace 1000000
-	./obj_dir/Vtop_axi_wrapper -linux -pc -printpc
+	# ./obj_dir/Vtop_axi_wrapper -os -pc -printpc -nodiff
+	./obj_dir/Vtop_axi_wrapper -os -pc -printpc
 	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
 	# ./run_riscv_test.py
 
