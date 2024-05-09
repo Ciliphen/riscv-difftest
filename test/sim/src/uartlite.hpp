@@ -15,6 +15,8 @@
 #define ULITE_CONTROL_RST_TX 0x01
 #define ULITE_CONTROL_RST_RX 0x02
 
+extern long long current_pc;
+
 struct uartlite_regs
 {
     unsigned int rx_fifo;
@@ -55,7 +57,7 @@ public:
     }
     bool do_write(uint64_t start_addr, uint64_t size, const unsigned char *buffer)
     {
-        // printf("uartlite write %d %d\n",start_addr,size);
+        // printf("pc = 0x%016lx\nuartlite write %d %d %s\n", current_pc, start_addr, size, buffer);
         std::unique_lock<std::mutex> lock_tx(tx_lock);
         std::unique_lock<std::mutex> lock_rx(rx_lock);
         if (start_addr + size > sizeof(regs))

@@ -12,7 +12,8 @@ obj_dir/V$(TOP_NAME): src/* $(SRC_FILE) ../soft/start.bin
 verilog:
 	$(MAKE) -C $(CHISEL_DIR) verilog
 	cp $(CHISEL_DIR)/build/PuaCpu.v $(SRC_DIR)
-	$(MAKE) no_trace
+	# $(MAKE) no_trace
+	$(MAKE) func
 
 no_trace: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop_axi_wrapper -os -pc -printpc 
@@ -21,17 +22,15 @@ no_diff: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop_axi_wrapper -os -pc -printpc -nodiff
 
 func: obj_dir/V$(TOP_NAME)
-	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ua-v-lrsc.bin -rvtest -trace 100000 -pc
-	# ./obj_dir/Vtop_axi_wrapper -linux -pc -starttrace 127940000 -printpc
-	# ./obj_dir/Vtop_axi_wrapper -linux -pc
-	# ./obj_dir/Vtop_axi_wrapper -linux -pc -printpc -trace 1000000
-	./obj_dir/Vtop_axi_wrapper -os -pc -printpc -starttrace 16300000 #-nodiff
-	# ./obj_dir/Vtop_axi_wrapper -os -pc -printpc
+	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64si-p-dirty.bin -rvtest -trace 100000 -pc
+	# ./obj_dir/Vtop_axi_wrapper -os -pc -starttrace 18460000 #-nodiff -printpc
+	./obj_dir/Vtop_axi_wrapper -os -pc #-printpc
 	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
 	# ./run_riscv_test.py
 
 trace: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ua-v-lrsc.bin -rvtest -golden_trace
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ui-p-lui.bin -rvtest -golden_trace
+
 ../soft/start.bin:
 	cd ../soft && make
 

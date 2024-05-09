@@ -10,12 +10,24 @@
 #include <utility>
 #include <climits>
 
+extern long long current_pc;
+
 // TODO: add pma and check pma
 class rv_systembus
 {
 public:
     bool pa_read(uint64_t start_addr, uint64_t size, uint8_t *buffer)
     {
+        // if (start_addr < 0x80000000)
+        // {
+        //     printf("pc = 0x%016lx\n", current_pc);
+        //     printf("mmio read %lx size %lu data ", start_addr, size);
+        //     for (uint64_t i = 0; i < size; i++)
+        //     {
+        //         printf("%02x", buffer[i]);
+        //     }
+        //     printf("\n");
+        // }
         auto it = devices.upper_bound(std::make_pair(start_addr, ULONG_MAX));
         if (it == devices.begin())
             return false;
@@ -31,6 +43,16 @@ public:
     }
     bool pa_write(uint64_t start_addr, uint64_t size, const uint8_t *buffer)
     {
+        // if (start_addr < 0x80000000)
+        // {
+        //     printf("pc = 0x%016lx\n", current_pc);
+        //     printf("mmio write %lx size %lu data ", start_addr, size);
+        //     for (uint64_t i = 0; i < size; i++)
+        //     {
+        //         printf("%02x", buffer[i]);
+        //     }
+        //     printf("\n");
+        // }
         if (start_addr <= lr_pa && lr_pa + size <= start_addr + size)
         {
             lr_valid = false;

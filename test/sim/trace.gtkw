@@ -1,14 +1,14 @@
 [*]
 [*] GTKWave Analyzer v3.3.100 (w)1999-2019 BSI
-[*] Tue May 07 10:23:07 2024
+[*] Thu May 09 03:20:36 2024
 [*]
 [dumpfile] "D:\@XLF\riscv-lab\difftest\test\sim\trace.fst"
-[dumpfile_mtime] "Tue May 07 10:19:18 2024"
-[dumpfile_size] 37347
+[dumpfile_mtime] "Thu May 09 03:18:41 2024"
+[dumpfile_size] 94590
 [savefile] "D:\@XLF\riscv-lab\difftest\test\sim\trace.gtkw"
-[timestart] 32
+[timestart] 725
 [size] 1536 801
-[pos] -113 -113
+[pos] -9 -9
 *-1.357918 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.top_axi_wrapper.
@@ -22,14 +22,22 @@
 @28
 TOP.top_axi_wrapper.core.core.clock
 TOP.top_axi_wrapper.core.core.reset
-@800201
--id
+@22
+TOP.top_axi_wrapper.core.core.WriteBackUnit.io_debug_wb_pc[63:0]
+@28
+TOP.top_axi_wrapper.core.core.WriteBackUnit.io_debug_wb_rf_wen
+@22
+TOP.top_axi_wrapper.core.core.WriteBackUnit.io_debug_wb_rf_wnum[4:0]
 @23
+TOP.top_axi_wrapper.core.core.WriteBackUnit.io_debug_wb_rf_wdata[63:0]
+@800200
+-id
+@22
 TOP.top_axi_wrapper.core.core.DecodeUnit.io_instFifo_inst_0_pc[63:0]
 +{inst0} TOP.top_axi_wrapper.core.core.DecodeUnit.decoder_0.io_in_inst[63:0]
 TOP.top_axi_wrapper.core.core.DecodeUnit.io_instFifo_inst_1_pc[63:0]
 +{inst1} TOP.top_axi_wrapper.core.core.DecodeUnit.decoder_1.io_in_inst[63:0]
-@1000201
+@1000200
 -id
 [pattern_trace] 1
 [pattern_trace] 0

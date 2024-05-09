@@ -9,7 +9,7 @@
 
 - `core` 存放你的核的代码，你可以不使用框架，仅需要确保最外层模块名为`top_axi_wrapper`，且信号一致即可。
 
-- test 运行整个核的测试框架
+- `test` 运行整个核的测试框架
 
   - `soft` 在你的 CPU 核上运行的软件，默认为一个串口输出的演示程序，具体可以查看 Makefile。
   - `sim`：整合[soc-simulator](https://github.com/cyyself/soc-simulator)与[cemu](https://github.com/cyyself/cemu)的文件，提供 Verilator 运行环境。

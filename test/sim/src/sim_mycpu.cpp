@@ -22,6 +22,8 @@ long trace_start_time = 0; // -starttrace [time]
 std::atomic_bool trace_on = false;
 long sim_time = 1e5;
 
+long long current_pc;
+
 VerilatedFstC fst;
 
 void open_trace()
@@ -318,6 +320,7 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         { // instr retire
             cemu_rvcore.step(cemu_plic.get_int(0), cemu_clint.m_s_irq(0), cemu_clint.m_t_irq(0), cemu_plic.get_int(1));
             last_commit = ticks;
+            current_pc = cemu_rvcore.debug_pc;
             if (pc_cnt++ >= print_pc_cycle && print_pc)
             {
                 printf("PC = 0x%016lx\n", cemu_rvcore.debug_pc);
