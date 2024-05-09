@@ -76,7 +76,7 @@ private:
         uint64_t rem_addr = 4096 - (r_start_addr % 4096);
         if (r_tot_len > rem_addr)
         {
-            printf("r_tot_len: %d, rem_addr: %d\n", r_tot_len, rem_addr);
+            printf("r_tot_len: %d, rem_addr: %ld\n", r_tot_len, rem_addr);
             return false;
         }
         if (r_each_len > D_bytes)

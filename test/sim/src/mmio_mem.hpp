@@ -71,7 +71,7 @@ public:
                     if (mem[start_addr + i] != diff_mem[start_addr + i])
                     {
                         running = false;
-                        printf("Error writeback cache at addr %x\n", start_addr + i);
+                        printf("Error writeback cache at addr %lx\n", start_addr + i);
                     }
             }
             return true;
@@ -88,7 +88,7 @@ public:
                         if (mem[start_addr + i] != diff_mem[start_addr + i])
                         {
                             running = false;
-                            printf("Error writeback cache at addr %x\n", start_addr + i);
+                            printf("Error writeback cache at addr %lx\n", start_addr + i);
                         }
                 }
                 return true;

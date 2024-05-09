@@ -199,7 +199,7 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
                                                    top->debug_wdata != cemu_rvcore.debug_reg_wdata))
             {
                 printf("\033[1;31mError!\033[0m\n");
-                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
+                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
                 running = false;
                 if (dump_pc_history)
@@ -333,7 +333,7 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("ticks: %ld\n", ticks);
-                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
+                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
                 running = false;
                 if (dump_pc_history)
@@ -404,7 +404,6 @@ void os_nodiff_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         top->MSI = clint.m_s_irq(0);
         top->MTI = clint.m_t_irq(0);
         top->SEI = plic.get_int(1);
-
         if (rst_ticks > 0)
         {
             top->reset = 1;
@@ -426,6 +425,12 @@ void os_nodiff_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
                 printf("%c", uart.getc());
                 fflush(stdout);
             }
+        }
+        if (pc_cnt++ >= print_pc_cycle && print_pc)
+        {
+            if (top->debug_pc != 0)
+                printf("PC = 0x%016lx\n", top->debug_pc);
+            pc_cnt = 0;
         }
     }
 }
@@ -493,7 +498,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
                                                    top->debug_wdata != cemu_rvcore.debug_reg_wdata))
             {
                 printf("\033[1;31mError!\033[0m\n");
-                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
+                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
                 if (!should_delay)
                 {
@@ -607,7 +612,7 @@ void make_golden_trace(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, con
                 running)
             {
                 printf("\033[1;31mError!\033[0m\n");
-                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
+                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
                 if (!should_delay)
                 {
