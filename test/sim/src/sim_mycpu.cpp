@@ -233,7 +233,6 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     printf("total_ticks: %lu\n", ticks);
 }
 
-
 void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
 {
     const char *payload_load_path = "./os/fw_payload.bin";
@@ -367,6 +366,68 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         fst.close();
     pthread_kill(uart_input_thread->native_handle(), SIGKILL);
     printf("total_ticks: %lu\n", ticks);
+}
+
+void os_nodiff_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
+{
+    const char *payload_load_path = "./os/fw_payload.bin";
+    const bool use_payload = true;
+
+    // setup rtl {
+    axi4<32, 64, 4> mmio_sigs;
+    axi4_ref<32, 64, 4> mmio_sigs_ref(mmio_sigs);
+    axi4_xbar<32, 64, 4> mmio;
+    rv_clint<2> clint;
+    rv_plic<4, 4> plic;
+
+    mmio_mem payload(0x100000000, payload_load_path);
+
+    // setup uart
+    uartlite uart;
+    std::thread *uart_input_thread = new std::thread(uart_input, std::ref(uart));
+    assert(mmio.add_dev(0x2000000, 0x10000, &clint));
+    assert(mmio.add_dev(0xc000000, 0x4000000, &plic));
+    assert(mmio.add_dev(0x60100000, 0x100000, &uart), "uart");
+    assert(mmio.add_dev(0x80000000, 0x80000000, &payload), "opensbi");
+    // setup rtl }
+
+    uint64_t rst_ticks = 10;
+    uint64_t ticks = 0;
+    uint64_t last_commit = ticks;
+    uint64_t pc_cnt = print_pc_cycle;
+    while (1)
+    {
+        clint.tick();
+        plic.update_ext(1, uart.irq());
+        // void step(bool meip, bool msip, bool mtip, bool seip) {
+        top->MEI = plic.get_int(0);
+        top->MSI = clint.m_s_irq(0);
+        top->MTI = clint.m_t_irq(0);
+        top->SEI = plic.get_int(1);
+
+        if (rst_ticks > 0)
+        {
+            top->reset = 1;
+            rst_ticks--;
+        }
+        else
+            top->reset = 0;
+        top->clock = !top->clock;
+        if (top->clock && !top->reset)
+            mmio_sigs.update_input(mmio_ref);
+        top->eval();
+        if (top->clock && !top->reset)
+        {
+            mmio.beat(mmio_sigs_ref);
+            mmio_sigs.update_output(mmio_ref);
+            top->eval();
+            if (uart.exist_tx())
+            {
+                printf("%c", uart.getc());
+                fflush(stdout);
+            }
+        }
+    }
 }
 
 void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const char *riscv_test_path)
@@ -675,7 +736,14 @@ int main(int argc, char **argv, char **env)
         }
         break;
     case OS_RUN:
-        os_run(top, mmio_ref);
+        if (difftest)
+        {
+            os_run(top, mmio_ref);
+        }
+        else
+        {
+            os_nodiff_run(top, mmio_ref);
+        }
         break;
     default:
         printf("Unknown running mode.\n");

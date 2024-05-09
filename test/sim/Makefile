@@ -13,7 +13,7 @@ verilog:
 	$(MAKE) -C $(CHISEL_DIR) verilog
 	cp $(CHISEL_DIR)/build/PuaCpu.v $(SRC_DIR)
 	# $(MAKE) no_trace
-	$(MAKE) func
+	# $(MAKE) func
 
 no_trace: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop_axi_wrapper -os -pc -printpc 
@@ -23,8 +23,8 @@ no_diff: obj_dir/V$(TOP_NAME)
 
 func: obj_dir/V$(TOP_NAME)
 	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64si-p-dirty.bin -rvtest -trace 100000 -pc
-	# ./obj_dir/Vtop_axi_wrapper -os -pc -starttrace 18460000 #-nodiff -printpc
-	./obj_dir/Vtop_axi_wrapper -os -pc #-printpc
+	./obj_dir/Vtop_axi_wrapper -os -pc #-starttrace 149580000 #-nodiff -printpc
+	# ./obj_dir/Vtop_axi_wrapper -os -pc #-printpc
 	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
 	# ./run_riscv_test.py
 
