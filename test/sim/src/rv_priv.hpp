@@ -205,7 +205,7 @@ public:
             csr_result = mcycle;
             break;
         case csr_minstret:
-            csr_result = minstret;
+            csr_result = minstret - 1;
             break;
         case csr_sstatus:
         {

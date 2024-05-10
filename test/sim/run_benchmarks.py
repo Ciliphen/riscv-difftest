@@ -1,14 +1,28 @@
 #!/usr/bin/env python3
 
 import os
+
 # build riscv-tests to this folder
 BUILD_DIR = "riscv-tests-build/benchmarks"
 DST_DIR = "./tests-bin"
-TEST_PRIFIX = ["dhrystone"]
+TEST_PRIFIX = [
+    "dhrystone",
+    "median",
+    "mm",
+    "mt-matmul",
+    "mt-vvadd",
+    "multiply",
+    "pmp",
+    "qsort",
+    "rsort",
+    "spmv",
+    "towers",
+    "vvadd",
+]
 RISCV_PREFIX = "riscv64-unknown-linux-gnu-"
 
 file_list = []
-for (dirpath, dirnames, filenames) in os.walk(BUILD_DIR):
+for dirpath, dirnames, filenames in os.walk(BUILD_DIR):
     for x in filenames:
         if x.endswith(".dump"):
             continue
@@ -17,15 +31,22 @@ for (dirpath, dirnames, filenames) in os.walk(BUILD_DIR):
                 file_list.append(x)
 file_list.sort()
 
+
 def make_test():
     os.system("mkdir -p {}".format(DST_DIR))
     for x in file_list:
-        os.system("{}objcopy -O binary {}/{} {}/{}.bin".format(RISCV_PREFIX,BUILD_DIR,x,DST_DIR,x))
+        os.system(
+            "{}objcopy -O binary {}/{} {}/{}.bin".format(
+                RISCV_PREFIX, BUILD_DIR, x, DST_DIR, x
+            )
+        )
+
 
 def run_all():
     for x in file_list:
-        print("Testing {}: ".format(x),end="",flush=True)
-        os.system("./obj_dir/Vtop_axi_wrapper {}/{}.bin -rvtest".format(DST_DIR,x))
+        print("Testing {}: ".format(x), end="", flush=True)
+        os.system("./obj_dir/Vtop_axi_wrapper {}/{}.bin -rvtest".format(DST_DIR, x))
+
 
 make_test()
 run_all()

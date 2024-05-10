@@ -252,6 +252,7 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
+    cemu_rvcore.set_difftest_mode(true);
     // setup cemu }
 
     // setup rtl {
@@ -283,8 +284,6 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     uint64_t pc_cnt = print_pc_cycle;
     while (!Verilated::gotFinish() && sim_time > 0 && running)
     {
-        cemu_clint.tick();
-        cemu_plic.update_ext(1, cemu_uart.irq());
         clint.tick();
         plic.update_ext(1, uart.irq());
         // void step(bool meip, bool msip, bool mtip, bool seip) {
@@ -317,6 +316,8 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         }
         if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
         { // instr retire
+            cemu_clint.synchronize(clint.get_mtime());
+            cemu_plic.update_ext(1, cemu_uart.irq());
             cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_mip, top->debug_csr_interrupt);
             cemu_rvcore.step(0, 0, 0, 0);
             // cemu_rvcore.step(cemu_plic.get_int(0), cemu_clint.m_s_irq(0), cemu_clint.m_t_irq(0), cemu_plic.get_int(1));
