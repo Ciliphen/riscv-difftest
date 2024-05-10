@@ -20,6 +20,7 @@ public:
         cur_need_trap = false;
         mcycle = pua_mcycle;
         ip = pua_mip;
+        cur_priv = next_priv;
     }
     rv_priv(uint64_t hart_id, uint64_t &pc, rv_systembus &bus) : hart_id(hart_id), cur_pc(pc), bus(bus), sv39(bus)
     {

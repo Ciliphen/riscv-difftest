@@ -11,3 +11,4 @@ test/sim/*.bin
 
 test/sim/gen_bin/build/*
 test/sim/trace.txt
+test/sim/*.s

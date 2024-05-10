@@ -55,15 +55,6 @@ public:
     {
         exec(meip, msip, mtip, seip);
     }
-    void import_diff_test_info(uint64_t mcycle, uint64_t mip, bool interrupt_on)
-    {
-        priv.difftest_preexec(mcycle, mip, interrupt_on);
-        int_allow = interrupt_on;
-    }
-    void set_difftest_mode(bool value)
-    {
-        difftest_mode = value;
-    }
     void jump(uint64_t new_pc)
     {
         pc = new_pc;
@@ -92,6 +83,15 @@ public:
             printf("pc: %016lx inst: %016lx\n", pc_history, inst_history);
         }
         printf("----- PC INST HISTORY  END  -----\n");
+    }
+    void set_difftest_mode(bool value)
+    {
+        difftest_mode = value;
+    }
+    void import_diff_test_info(uint64_t mcycle, uint64_t mip, bool interrupt_on)
+    {
+        priv.difftest_preexec(mcycle, mip, interrupt_on);
+        int_allow = interrupt_on;
     }
 
 private:

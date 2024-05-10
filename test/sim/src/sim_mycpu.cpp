@@ -448,7 +448,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
-    // cemu_rvcore.set_difftest_mode(true);
+    cemu_rvcore.set_difftest_mode(true);
     // setup cemu }
 
     // setup rtl {
@@ -470,7 +470,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
     uint64_t rst_ticks = 10;
     uint64_t ticks = 0;
     uint64_t last_commit = ticks;
-    int delay = 10;
+    int delay = 1500;
     while (!Verilated::gotFinish() && sim_time > 0 && running)
     {
         if (rst_ticks > 0)
@@ -492,7 +492,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
         }
         if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
         { // instr retire
-            // cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_mip, top->debug_csr_interrupt);
+            cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_mip, top->debug_csr_interrupt);
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
             if (!cemu_rvcore.debug_pc)
@@ -678,11 +678,6 @@ void make_golden_trace(const char *riscv_test_path)
         cemu_rvcore.step(0, 0, 0, 0);
         fprintf(golden_trace_file, "1 %016lx %02lx %016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
         last_commit = ticks;
-        if (cemu_rvcore.debug_pc == 0)
-        {
-            printf("Test passed!\n");
-            running = false;
-        }
 
         ticks++;
         if (ticks - last_commit >= commit_timeout)

@@ -22,18 +22,20 @@ no_diff: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop_axi_wrapper -os -pc -printpc -nodiff
 
 func: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64mi-p-illegal.bin -rvtest -trace 100000 -pc
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64mi-p-illegal.bin -rvtest -trace 100000 -pc #-delay
 	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/dhrystone.riscv.bin -rvtest -trace 100000 -pc
 	# ./obj_dir/Vtop_axi_wrapper -os -pc -starttrace 184530000 #-nodiff -printpc
 	# ./obj_dir/Vtop_axi_wrapper -os -pc #-printpc
 	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
 	# ./run_riscv_test.py
 
+# 生成My的trace
 trace: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ui-p-lui.bin -rvtest -cpu_trace
 
+# 生成RV模拟器的标准trace
 golden_trace: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ui-p-lui.bin -rvtest -golden_trace
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64mi-p-illegal.bin -rvtest -golden_trace
 
 ../soft/start.bin:
 	cd ../soft && make
