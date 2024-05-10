@@ -30,6 +30,9 @@ func: obj_dir/V$(TOP_NAME)
 	# ./run_riscv_test.py
 
 trace: obj_dir/V$(TOP_NAME)
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ui-p-lui.bin -rvtest -cpu_trace
+
+golden_trace: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ui-p-lui.bin -rvtest -golden_trace
 
 ../soft/start.bin:
