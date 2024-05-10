@@ -15,6 +15,12 @@ extern bool run_riscv_test;
 class rv_priv
 {
 public:
+    void difftest_preexec(uint64_t pua_mcycle, uint64_t pua_mip, bool interrupt_on)
+    {
+        cur_need_trap = false;
+        mcycle = pua_mcycle;
+        ip = pua_mip;
+    }
     rv_priv(uint64_t hart_id, uint64_t &pc, rv_systembus &bus) : hart_id(hart_id), cur_pc(pc), bus(bus), sv39(bus)
     {
         reset();
@@ -54,7 +60,54 @@ public:
         satp = 0;
         scounteren = 0;
     }
-
+    void check_and_raise_int()
+    { // TODO: Find interrupts trap priority compare to exceptions. Now interrupts are prior to exceptions.
+        /*
+            An interrupt i will trap to M-mode (causing the privilege mode to change to M-mode) if all of
+            the following are true: (a) either the current privilege mode is M and the MIE bit in the mstatus
+            register is set, or the current privilege mode has less privilege than M-mode; (b) bit i is set in both
+            mip and mie; and (c) if register mideleg exists, bit i is not set in mideleg
+         */
+        /*
+            An interrupt i will trap to S-mode if both of the following are true: (a) either the current privilege
+            mode is S and the SIE bit in the sstatus register is set, or the current privilege mode has less
+            privilege than S-mode; and (b) bit i is set in both sip and sie.
+         */
+        /*
+            out of spec: mideleg layout as sip rather than mip.
+            M[EST]I bits in mideleg is hardwired 0.
+            OpenSBI will not delegate these ints to S-Mode. So we don't need to implement.
+         */
+        // Note: WFI is not affacted by mstatus.mie and mstatus.sie and mideleg, but we implement WFI as nop currently.
+        csr_mstatus_def *mstatus = (csr_mstatus_def *)&status;
+        uint64_t int_bits = ip & ie;
+        uint64_t final_int_index = exc_custom_ok;
+        if (cur_priv == M_MODE)
+        {
+            // Note: We should use mideleg as interrupt disable in M-Mode as interrupts didn't transfer to lower levels.
+            uint64_t mmode_int_bits = int_bits & (~mideleg);
+            if (mmode_int_bits && mstatus->mie)
+                final_int_index = int2index(mmode_int_bits);
+        }
+        else
+        {
+            // check traps to smode or mmode
+            uint64_t int_index = int2index(int_bits);
+            if ((1ul << int_index) & mideleg)
+            { // delegate to s
+                // Note: If delegate to S but sie is 0, we should not raise trap to M-Mode.
+                if (mstatus->sie || cur_priv < S_MODE)
+                    final_int_index = int_index;
+            }
+            else
+            {
+                if (mstatus->mie || cur_priv < M_MODE)
+                    final_int_index = int_index;
+            }
+        }
+        if (final_int_index != exc_custom_ok)
+            raise_trap(csr_cause_def(final_int_index, 1));
+    }
     void pre_exec(bool meip, bool msip, bool mtip, bool seip)
     {
         mcycle++;
@@ -781,54 +834,6 @@ private:
         }
         else
             return exc_custom_ok;
-    }
-    void check_and_raise_int()
-    { // TODO: Find interrupts trap priority compare to exceptions. Now interrupts are prior to exceptions.
-        /*
-            An interrupt i will trap to M-mode (causing the privilege mode to change to M-mode) if all of
-            the following are true: (a) either the current privilege mode is M and the MIE bit in the mstatus
-            register is set, or the current privilege mode has less privilege than M-mode; (b) bit i is set in both
-            mip and mie; and (c) if register mideleg exists, bit i is not set in mideleg
-         */
-        /*
-            An interrupt i will trap to S-mode if both of the following are true: (a) either the current privilege
-            mode is S and the SIE bit in the sstatus register is set, or the current privilege mode has less
-            privilege than S-mode; and (b) bit i is set in both sip and sie.
-         */
-        /*
-            out of spec: mideleg layout as sip rather than mip.
-            M[EST]I bits in mideleg is hardwired 0.
-            OpenSBI will not delegate these ints to S-Mode. So we don't need to implement.
-         */
-        // Note: WFI is not affacted by mstatus.mie and mstatus.sie and mideleg, but we implement WFI as nop currently.
-        csr_mstatus_def *mstatus = (csr_mstatus_def *)&status;
-        uint64_t int_bits = ip & ie;
-        uint64_t final_int_index = exc_custom_ok;
-        if (cur_priv == M_MODE)
-        {
-            // Note: We should use mideleg as interrupt disable in M-Mode as interrupts didn't transfer to lower levels.
-            uint64_t mmode_int_bits = int_bits & (~mideleg);
-            if (mmode_int_bits && mstatus->mie)
-                final_int_index = int2index(mmode_int_bits);
-        }
-        else
-        {
-            // check traps to smode or mmode
-            uint64_t int_index = int2index(int_bits);
-            if ((1ul << int_index) & mideleg)
-            { // delegate to s
-                // Note: If delegate to S but sie is 0, we should not raise trap to M-Mode.
-                if (mstatus->sie || cur_priv < S_MODE)
-                    final_int_index = int_index;
-            }
-            else
-            {
-                if (mstatus->mie || cur_priv < M_MODE)
-                    final_int_index = int_index;
-            }
-        }
-        if (final_int_index != exc_custom_ok)
-            raise_trap(csr_cause_def(final_int_index, 1));
     }
     // status
     const uint64_t &cur_pc;

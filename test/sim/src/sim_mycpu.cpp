@@ -195,12 +195,12 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
             if (top->debug_pc != cemu_rvcore.debug_pc ||
-                cemu_rvcore.debug_reg_num != 0 && (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
-                                                   top->debug_wdata != cemu_rvcore.debug_reg_wdata))
+                cemu_rvcore.debug_reg_num != 0 && (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
+                                                   top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata))
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
-                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
+                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_rf_wnum, top->debug_rf_wdata);
                 running = false;
                 if (dump_pc_history)
                     cemu_rvcore.dump_pc_history();
@@ -317,7 +317,9 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         }
         if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
         { // instr retire
-            cemu_rvcore.step(cemu_plic.get_int(0), cemu_clint.m_s_irq(0), cemu_clint.m_t_irq(0), cemu_plic.get_int(1));
+            cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_mip, top->debug_csr_interrupt);
+            cemu_rvcore.step(0, 0, 0, 0);
+            // cemu_rvcore.step(cemu_plic.get_int(0), cemu_clint.m_s_irq(0), cemu_clint.m_t_irq(0), cemu_plic.get_int(1));
             last_commit = ticks;
             current_pc = cemu_rvcore.debug_pc;
             if (pc_cnt++ >= print_pc_cycle && print_pc)
@@ -328,13 +330,13 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
             if (difftest &&
                 (top->debug_pc != cemu_rvcore.debug_pc ||
                  cemu_rvcore.debug_reg_num != 0 &&
-                     (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
-                      top->debug_wdata != cemu_rvcore.debug_reg_wdata)))
+                     (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
+                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)))
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("ticks: %ld\n", ticks);
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
-                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
+                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_rf_wnum, top->debug_rf_wdata);
                 running = false;
                 if (dump_pc_history)
                     cemu_rvcore.dump_pc_history();
@@ -446,6 +448,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
+    // cemu_rvcore.set_difftest_mode(true);
     // setup cemu }
 
     // setup rtl {
@@ -489,17 +492,18 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
         }
         if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
         { // instr retire
+            // cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_mip, top->debug_csr_interrupt);
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
             if (!cemu_rvcore.debug_pc)
                 cemu_rvcore.step(0, 0, 0, 0);
-            if (top->debug_pc != cemu_rvcore.debug_pc ||
-                cemu_rvcore.debug_reg_num != 0 && (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
-                                                   top->debug_wdata != cemu_rvcore.debug_reg_wdata))
+            if ((top->debug_pc != cemu_rvcore.debug_pc ||
+                cemu_rvcore.debug_reg_num != 0 && (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
+                                                   top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)))
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
-                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
+                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_rf_wnum, top->debug_rf_wdata);
                 if (!should_delay)
                 {
                     running = false;
@@ -592,9 +596,9 @@ void make_golden_trace(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, con
         }
         if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
         { // instr retire
-            if (top->debug_commit != 0 && top->debug_reg_num != 0)
+            if (top->debug_commit != 0 && top->debug_rf_wnum != 0)
             {
-                fprintf(golden_trace_file, "1 %016lx %02x %016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
+                fprintf(golden_trace_file, "1 %016lx %02x %016lx\n", top->debug_pc, top->debug_rf_wnum, top->debug_rf_wdata);
             }
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
@@ -607,13 +611,13 @@ void make_golden_trace(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, con
             }
             if ((top->debug_pc != cemu_rvcore.debug_pc ||
                  cemu_rvcore.debug_reg_num != 0 &&
-                     (top->debug_reg_num != cemu_rvcore.debug_reg_num ||
-                      top->debug_wdata != cemu_rvcore.debug_reg_wdata)) &&
+                     (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
+                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)) &&
                 running)
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
-                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_reg_num, top->debug_wdata);
+                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_rf_wnum, top->debug_rf_wdata);
                 if (!should_delay)
                 {
                     running = false;

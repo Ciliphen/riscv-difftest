@@ -44,6 +44,8 @@ public:
     uint64_t debug_pc;
     uint64_t debug_reg_num;
     uint64_t debug_reg_wdata;
+    bool int_allow;
+    bool difftest_mode = false;
     rv_core(rv_systembus &systembus, uint8_t hart_id = 0) : systembus(systembus), priv(hart_id, pc, systembus)
     {
         for (int i = 0; i < 32; i++)
@@ -52,6 +54,15 @@ public:
     void step(bool meip, bool msip, bool mtip, bool seip)
     {
         exec(meip, msip, mtip, seip);
+    }
+    void import_diff_test_info(uint64_t mcycle, uint64_t mip, bool interrupt_on)
+    {
+        priv.difftest_preexec(mcycle, mip, interrupt_on);
+        int_allow = interrupt_on;
+    }
+    void set_difftest_mode(bool value)
+    {
+        difftest_mode = value;
     }
     void jump(uint64_t new_pc)
     {
@@ -115,7 +126,11 @@ private:
         rv_instr *inst = (rv_instr *)&cur_instr;
         rv_exc_code if_exc;
     instr_fetch:
-        priv.pre_exec(meip, msip, mtip, seip);
+
+        if (!difftest_mode)
+            priv.pre_exec(meip, msip, mtip, seip);
+        else if (int_allow)
+            priv.check_and_raise_int();
         if (priv.need_trap())
             goto exception;
         if (pc % PC_ALIGN)

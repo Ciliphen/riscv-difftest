@@ -22,8 +22,8 @@ no_diff: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop_axi_wrapper -os -pc -printpc -nodiff
 
 func: obj_dir/V$(TOP_NAME)
-	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64mi-p-illegal.bin -rvtest -trace 100000 -pc
-	./obj_dir/Vtop_axi_wrapper ./tests-bin/dhrystone.riscv.bin -rvtest -trace 100000 -pc
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64mi-p-illegal.bin -rvtest -trace 100000 -pc
+	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/dhrystone.riscv.bin -rvtest -trace 100000 -pc
 	# ./obj_dir/Vtop_axi_wrapper -os -pc -starttrace 184530000 #-nodiff -printpc
 	# ./obj_dir/Vtop_axi_wrapper -os -pc #-printpc
 	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
