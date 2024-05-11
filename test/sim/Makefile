@@ -24,8 +24,8 @@ no_diff: obj_dir/V$(TOP_NAME)
 func: obj_dir/V$(TOP_NAME)
 	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/dhrystone.riscv.bin -rvtest -trace 100000 -pc #-delay
 	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/dhrystone.riscv.bin -rvtest -trace 100000 -pc
-	# ./obj_dir/Vtop_axi_wrapper -os -pc -starttrace 184530000 #-nodiff -printpc
-	./obj_dir/Vtop_axi_wrapper -os -pc -printpc
+	./obj_dir/Vtop_axi_wrapper -os -pc -starttrace 184500000 #-nodiff -printpc
+	# ./obj_dir/Vtop_axi_wrapper -os -pc -printpc
 	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
 	# ./run_riscv_test.py
 

@@ -20,7 +20,7 @@ const uint64_t commit_timeout = 3000;
 const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
 std::atomic_bool trace_on = false;
-long sim_time = 1e5;
+long sim_time = 1e8;
 
 long long current_pc;
 
@@ -264,6 +264,7 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     rv_plic<4, 4> plic;
 
     mmio_mem payload(0x100000000, payload_load_path);
+    payload.set_diff_mem(cemu_payload.get_mem_ptr());
 
     // setup uart
     uartlite uart;
@@ -372,10 +373,45 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     printf("total_ticks: %lu\n", ticks);
 }
 
+void os_cemu_run()
+{
+    const char *load_path = "./os/fw_payload.bin";
+
+    rv_systembus system_bus;
+
+    uartlite uart;
+    rv_clint<2> clint;
+    rv_plic<4, 4> plic;
+    mmio_mem dram(4096l * 1024l * 1024l, load_path);
+    assert(system_bus.add_dev(0x2000000, 0x10000, &clint));
+    assert(system_bus.add_dev(0xc000000, 0x4000000, &plic));
+    assert(system_bus.add_dev(0x60100000, 1024 * 1024, &uart));
+    assert(system_bus.add_dev(0x80000000, 2048l * 1024l * 1024l, &dram));
+
+    rv_core rv(system_bus);
+
+    std::thread uart_input_thread(uart_input, std::ref(uart));
+
+    rv.jump(0x80000000);
+    uint64_t pc_cnt = print_pc_cycle;
+    while (1)
+    {
+        clint.tick();
+        plic.update_ext(1, uart.irq());
+        rv.step(plic.get_int(0), clint.m_s_irq(0), clint.m_t_irq(0), plic.get_int(1));
+        while (uart.exist_tx())
+        {
+            char c = uart.getc();
+            if (c != '\r')
+                std::cout << c;
+        }
+        std::cout.flush();
+    }
+}
+
 void os_nodiff_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
 {
     const char *payload_load_path = "./os/fw_payload.bin";
-    const bool use_payload = true;
 
     // setup rtl {
     axi4<32, 64, 4> mmio_sigs;
@@ -384,15 +420,15 @@ void os_nodiff_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     rv_clint<2> clint;
     rv_plic<4, 4> plic;
 
-    mmio_mem payload(0x100000000, payload_load_path);
+    mmio_mem dram(0x100000000, payload_load_path);
 
     // setup uart
     uartlite uart;
-    std::thread *uart_input_thread = new std::thread(uart_input, std::ref(uart));
+    std::thread uart_input_thread(uart_input, std::ref(uart));
     assert(mmio.add_dev(0x2000000, 0x10000, &clint));
     assert(mmio.add_dev(0xc000000, 0x4000000, &plic));
-    assert(mmio.add_dev(0x60100000, 0x100000, &uart), "uart");
-    assert(mmio.add_dev(0x80000000, 0x80000000, &payload), "opensbi");
+    assert(mmio.add_dev(0x60100000, 1024 * 1024, &uart));
+    assert(mmio.add_dev(0x80000000, 2048l * 1024l * 1024l, &dram));
     // setup rtl }
 
     uint64_t rst_ticks = 10;
@@ -403,7 +439,6 @@ void os_nodiff_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     {
         clint.tick();
         plic.update_ext(1, uart.irq());
-        // void step(bool meip, bool msip, bool mtip, bool seip) {
         top->MEI = plic.get_int(0);
         top->MSI = clint.m_s_irq(0);
         top->MTI = clint.m_t_irq(0);
@@ -706,7 +741,8 @@ int main(int argc, char **argv, char **env)
         RISCV_TEST,
         CPU_TRACE,
         GOLDEN_TRACE,
-        OS_RUN
+        OS_RUN,
+        CEMU_RUM
     } run_mode = WORKBENCH;
 
     for (int i = 1; i < argc; i++)
@@ -762,6 +798,10 @@ int main(int argc, char **argv, char **env)
         {
             difftest = false;
         }
+        else if (strcmp(argv[i], "-cemu") == 0)
+        {
+            run_mode = CEMU_RUM;
+        }
         else
         {
             file_load_path = argv[i];
@@ -802,6 +842,9 @@ int main(int argc, char **argv, char **env)
         {
             os_nodiff_run(top, mmio_ref);
         }
+        break;
+    case CEMU_RUM:
+        os_cemu_run();
         break;
     default:
         printf("Unknown running mode.\n");
