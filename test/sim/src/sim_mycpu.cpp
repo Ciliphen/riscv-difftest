@@ -190,13 +190,14 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
                 fflush(stdout);
             }
         }
-        if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
+        if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
             if (top->debug_pc != cemu_rvcore.debug_pc ||
-                cemu_rvcore.debug_reg_num != 0 && (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
-                                                   top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata))
+                cemu_rvcore.debug_reg_num != 0 &&
+                    (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
+                     top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata))
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
@@ -314,7 +315,7 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
                 fflush(stdout);
             }
         }
-        if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
+        if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
             cemu_clint.synchronize(clint.get_mtime());
             cemu_plic.update_ext(1, cemu_uart.irq());
@@ -458,7 +459,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
     axi4_xbar<32, 64, 4> mmio;
 
     mmio_mem rtl_mem(128 * 1024 * 1024, riscv_test_path);
-
+    rtl_mem.set_diff_mem(cemu_mem.get_mem_ptr());
     assert(mmio.add_dev(0x80000000, 128 * 1024 * 1024, &rtl_mem));
     // setup rtl }
 
@@ -491,16 +492,15 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
             mmio_sigs.update_output(mmio_ref);
             top->eval();
         }
-        if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
+        if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
             cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_mip, top->debug_csr_interrupt);
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
-            if (!cemu_rvcore.debug_pc)
-                cemu_rvcore.step(0, 0, 0, 0);
             if ((top->debug_pc != cemu_rvcore.debug_pc ||
-                 cemu_rvcore.debug_reg_num != 0 && (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
-                                                    top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)))
+                 cemu_rvcore.debug_reg_num != 0 &&
+                     (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
+                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)))
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
@@ -595,7 +595,7 @@ void make_cpu_trace(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
             mmio_sigs.update_output(mmio_ref);
             top->eval();
         }
-        if (((top->clock && !dual_issue) || (top->debug_pc && dual_issue)) && top->debug_commit)
+        if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
             if (top->debug_commit != 0)
             {
@@ -603,8 +603,6 @@ void make_cpu_trace(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
             }
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
-            if (!cemu_rvcore.debug_pc)
-                cemu_rvcore.step(0, 0, 0, 0);
             if (top->debug_pc == 4 && cemu_rvcore.debug_pc == 0)
             {
                 printf("Test passed!\n");
