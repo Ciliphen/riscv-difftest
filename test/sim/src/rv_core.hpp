@@ -10,6 +10,15 @@
 #include <queue>
 
 extern bool run_riscv_test;
+extern long long icache_req;
+extern long long dcache_req;
+extern long long icache_hit;
+extern long long dcache_hit;
+extern long long bru_pred_branch;
+extern long long bru_pred_fail;
+extern long long bru_pred_fail;
+extern long long dual_issue_cnt;
+extern long long commit_cnt;
 
 enum alu_op
 {
@@ -88,9 +97,9 @@ public:
     {
         difftest_mode = value;
     }
-    void import_diff_test_info(uint64_t mcycle, uint64_t mip, bool interrupt_on)
+    void import_diff_test_info(uint64_t mcycle, uint64_t minstret, uint64_t mip, bool interrupt_on)
     {
-        priv.difftest_preexec(mcycle, mip, interrupt_on);
+        priv.difftest_preexec(mcycle, minstret, mip, interrupt_on);
         int_allow = interrupt_on;
     }
 
@@ -107,8 +116,17 @@ private:
         debug_pc = pc;
         debug_reg_num = 0;
         debug_reg_wdata = 0;
-        if (run_riscv_test && priv.get_cycle() >= 1000000)
+        if (run_riscv_test && priv.get_cycle() >= 1e6) // 默认是1e6
         {
+            if (perf_count)
+            {
+                printf("icache hit rate: %.2lf\n", 1.0 * icache_hit / icache_req * 100);
+                printf("dcache hit rate: %.2lf\n", 1.0 * dcache_hit / dcache_req * 100);
+                printf("branch predication accuracy: %.2lf\n", (1 - 1.0 * bru_pred_fail / bru_pred_branch) * 100);
+                printf("dual issue rate: %.2lf\n", 1.0 * dual_issue_cnt / commit_cnt * 100);
+                printf("IPC: %.2lf\n", 1.0 * commit_cnt / priv.get_cycle());
+            }
+
             printf("Test timeout! at pc 0x%lx\n", pc);
             exit(1);
         }
@@ -692,6 +710,15 @@ private:
                                         if (GPR[10] == 0)
                                         {
                                             printf("Test Pass!\n");
+                                            if (perf_count)
+                                            {
+                                                printf("icache hit rate: %.2lf\n", 1.0 * icache_hit / icache_req * 100);
+                                                printf("dcache hit rate: %.2lf\n", 1.0 * dcache_hit / dcache_req * 100);
+                                                printf("branch predication accuracy: %.2lf\n", (1 - 1.0 * bru_pred_fail / bru_pred_branch) * 100);
+                                                printf("dual issue rate: %.2lf\n", 1.0 * dual_issue_cnt / commit_cnt * 100);
+                                                printf("IPC: %.2lf\n", 1.0 * commit_cnt / priv.get_cycle());
+                                            }
+
                                             exit(0);
                                         }
                                         else

@@ -44,8 +44,8 @@ def make_test():
 
 def run_all():
     for x in file_list:
-        print("Testing {}: ".format(x), end="", flush=True)
-        os.system("./obj_dir/Vtop_axi_wrapper {}/{}.bin -rvtest".format(DST_DIR, x))
+        print("Testing {}: \n".format(x), end="", flush=True)
+        os.system("./obj_dir/Vtop_axi_wrapper {}/{}.bin -rvtest -perf".format(DST_DIR, x))
 
 
 make_test()

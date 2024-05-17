@@ -30,7 +30,7 @@ func: obj_dir/V$(TOP_NAME)
 	# ./run_riscv_test.py
 
 perf: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper ./tests-bin/dhrystone.riscv.bin -rvtest -trace 10000000 -pc
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/pmp.riscv.bin -rvtest -printpc -perf
 
 # 生成My的trace
 trace: obj_dir/V$(TOP_NAME)

@@ -16,11 +16,20 @@ bool should_delay = false;
 bool dual_issue = true;
 bool output_trace = false;
 bool difftest = true;
+bool perf_count = false;
 const uint64_t commit_timeout = 3000;
 const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
 std::atomic_bool trace_on = false;
 long sim_time = 1e8;
+long long icache_req = 0;
+long long dcache_req = 0;
+long long icache_hit = 0;
+long long dcache_hit = 0;
+long long bru_pred_branch = 0;
+long long bru_pred_fail = 0;
+long long dual_issue_cnt = 0;
+long long commit_cnt = 0;
 
 long long current_pc;
 
@@ -320,7 +329,7 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         { // instr retire
             cemu_clint.synchronize(clint.get_mtime());
             cemu_plic.update_ext(1, cemu_uart.irq());
-            cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_mip, top->debug_csr_interrupt);
+            cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_minstret, top->debug_csr_mip, top->debug_csr_interrupt);
             cemu_rvcore.step(0, 0, 0, 0);
             // cemu_rvcore.step(cemu_plic.get_int(0), cemu_clint.m_s_irq(0), cemu_clint.m_t_irq(0), cemu_plic.get_int(1));
             last_commit = ticks;
@@ -507,6 +516,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
     uint64_t rst_ticks = 10;
     uint64_t ticks = 0;
     uint64_t last_commit = ticks;
+    uint64_t pc_cnt = print_pc_cycle;
     int delay = 1500;
     while (!Verilated::gotFinish() && sim_time > 0 && running)
     {
@@ -526,12 +536,26 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
             mmio.beat(mmio_sigs_ref);
             mmio_sigs.update_output(mmio_ref);
             top->eval();
+            icache_req += top->debug_perf_icache_req;
+            dcache_req += top->debug_perf_dcache_req;
+            icache_hit += top->debug_perf_icache_hit;
+            dcache_hit += top->debug_perf_dcache_hit;
+            bru_pred_branch += top->debug_perf_bru_pred_branch;
+            bru_pred_fail += top->debug_perf_bru_pred_fail;
         }
+        commit_cnt += top->debug_commit;
+        if(!top->clock && !top->reset)
+            dual_issue_cnt += top->debug_commit;
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
-            cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_mip, top->debug_csr_interrupt);
+            cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_minstret, top->debug_csr_mip, top->debug_csr_interrupt);
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
+            if (pc_cnt++ >= print_pc_cycle && print_pc)
+            {
+                printf("PC = 0x%016lx\n", cemu_rvcore.debug_pc);
+                pc_cnt = 0;
+            }
             if ((top->debug_pc != cemu_rvcore.debug_pc ||
                  cemu_rvcore.debug_reg_num != 0 &&
                      (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
@@ -567,6 +591,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
                 cemu_rvcore.dump_pc_history();
         }
     }
+    
     printf("total_ticks: %lu\n", ticks);
 }
 
@@ -767,6 +792,10 @@ int main(int argc, char **argv, char **env)
         {
             run_riscv_test = true;
             run_mode = RISCV_TEST;
+        }
+        else if (strcmp(argv[i], "-perf") == 0)
+        {
+            perf_count = true;
         }
         else if (strcmp(argv[i], "-os") == 0)
         {

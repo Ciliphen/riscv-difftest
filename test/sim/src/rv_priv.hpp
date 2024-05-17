@@ -11,14 +11,25 @@
 #include "rv_sv39.hpp"
 
 extern bool run_riscv_test;
+extern bool perf_count;
+extern long long icache_req;
+extern long long dcache_req;
+extern long long icache_hit;
+extern long long dcache_hit;
+extern long long bru_pred_branch;
+extern long long bru_pred_fail;
+extern long long bru_pred_fail;
+extern long long dual_issue_cnt;
+extern long long commit_cnt;
 
 class rv_priv
 {
 public:
-    void difftest_preexec(uint64_t pua_mcycle, uint64_t pua_mip, bool interrupt_on)
+    void difftest_preexec(uint64_t pua_mcycle, uint64_t pua_minstret, uint64_t pua_mip, bool interrupt_on)
     {
         cur_need_trap = false;
         mcycle = pua_mcycle;
+        minstret = pua_minstret;
         ip = pua_mip;
         cur_priv = next_priv;
     }
@@ -205,7 +216,7 @@ public:
             csr_result = mcycle;
             break;
         case csr_minstret:
-            csr_result = minstret - 1;
+            csr_result = minstret;
             break;
         case csr_sstatus:
         {
@@ -530,6 +541,14 @@ public:
                         if (tohost == 1)
                         {
                             printf("Test Pass!\n");
+                            if (perf_count)
+                            {
+                                printf("icache hit rate: %.2lf\n", 1.0 * icache_hit / icache_req * 100);
+                                printf("dcache hit rate: %.2lf\n", 1.0 * dcache_hit / dcache_req * 100);
+                                printf("branch predication accuracy: %.2lf\n", (1 - 1.0 * bru_pred_fail / bru_pred_branch) * 100);
+                                printf("dual issue rate: %.2lf\n", 1.0 * dual_issue_cnt / commit_cnt * 100);
+                                printf("IPC: %.2lf\n", 1.0 * commit_cnt / get_cycle());
+                            }
                             exit(0);
                         }
                         else
@@ -569,6 +588,14 @@ public:
                         if (tohost == 1)
                         {
                             printf("Test Pass!\n");
+                            if (perf_count)
+                            {
+                                printf("icache hit rate: %.2lf\n", 1.0 * icache_hit / icache_req * 100);
+                                printf("dcache hit rate: %.2lf\n", 1.0 * dcache_hit / dcache_req * 100);
+                                printf("branch predication accuracy: %.2lf\n", (1 - 1.0 * bru_pred_fail / bru_pred_branch) * 100);
+                                printf("dual issue rate: %.2lf\n", 1.0 * dual_issue_cnt / commit_cnt * 100);
+                                printf("IPC: %.2lf\n", 1.0 * commit_cnt / get_cycle());
+                            }
                             exit(0);
                         }
                         else
