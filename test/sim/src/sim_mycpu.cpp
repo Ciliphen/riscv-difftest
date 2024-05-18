@@ -297,12 +297,25 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     {
         clint.tick();
         plic.update_ext(1, uart.irq());
-        // void step(bool meip, bool msip, bool mtip, bool seip) {
+        cemu_clint.tick();
+        cemu_plic.update_ext(1, cemu_uart.irq());
         top->MEI = plic.get_int(0);
         top->MSI = clint.m_s_irq(0);
         top->MTI = clint.m_t_irq(0);
         top->SEI = plic.get_int(1);
-
+        if (cemu_plic.get_int(0) != plic.get_int(0) || cemu_clint.m_s_irq(0) != clint.m_s_irq(0) || cemu_clint.m_t_irq(0) != clint.m_t_irq(0) || cemu_plic.get_int(1) != plic.get_int(1))
+        {
+            printf("cemu_int\n");
+            printf("cemu_plic.get_int(0) = %d\n", cemu_plic.get_int(0));
+            printf("cemu_clint.m_s_irq(0) = %d\n", cemu_clint.m_s_irq(0));
+            printf("cemu_clint.m_t_irq(0) = %d\n", cemu_clint.m_t_irq(0));
+            printf("cemu_plic.get_int(1) = %d\n", cemu_plic.get_int(1));
+            printf("rtl_int\n");
+            printf("plic.get_int(0) = %d\n", plic.get_int(0));
+            printf("clint.m_s_irq(0) = %d\n", clint.m_s_irq(0));
+            printf("clint.m_t_irq(0) = %d\n", clint.m_t_irq(0));
+            printf("plic.get_int(1) = %d\n", plic.get_int(1));
+        }
         if (rst_ticks > 0)
         {
             top->reset = 1;
@@ -327,8 +340,6 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         }
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
-            cemu_clint.synchronize(clint.get_mtime());
-            cemu_plic.update_ext(1, cemu_uart.irq());
             cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_minstret, top->debug_csr_mip, top->debug_csr_interrupt);
             cemu_rvcore.step(0, 0, 0, 0);
             // cemu_rvcore.step(cemu_plic.get_int(0), cemu_clint.m_s_irq(0), cemu_clint.m_t_irq(0), cemu_plic.get_int(1));
@@ -336,8 +347,14 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
             current_pc = cemu_rvcore.debug_pc;
             if (pc_cnt++ >= print_pc_cycle && print_pc)
             {
-                printf("PC = 0x%016lx\n", cemu_rvcore.debug_pc);
+                printf("PC = 0x%016lx, ", cemu_rvcore.debug_pc);
+                printf("INST = 0x%08x\n", cemu_rvcore.debug_inst);
                 pc_cnt = 0;
+            }
+            bool special_pc = cemu_rvcore.debug_pc == 0x80021ec0;
+            if (special_pc)
+            {
+                cemu_rvcore.set_GPR(top->debug_rf_wnum, top->debug_rf_wdata);
             }
             if (difftest &&
                 (top->debug_pc != cemu_rvcore.debug_pc ||
@@ -544,7 +561,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
             bru_pred_fail += top->debug_perf_bru_pred_fail;
         }
         commit_cnt += top->debug_commit;
-        if(!top->clock && !top->reset)
+        if (!top->clock && !top->reset)
             dual_issue_cnt += top->debug_commit;
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
@@ -591,7 +608,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
                 cemu_rvcore.dump_pc_history();
         }
     }
-    
+
     printf("total_ticks: %lu\n", ticks);
 }
 

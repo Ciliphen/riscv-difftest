@@ -53,6 +53,7 @@ public:
     uint64_t debug_pc;
     uint64_t debug_reg_num;
     uint64_t debug_reg_wdata;
+    uint32_t debug_inst;
     bool int_allow;
     bool difftest_mode = false;
     rv_core(rv_systembus &systembus, uint8_t hart_id = 0) : systembus(systembus), priv(hart_id, pc, systembus)
@@ -170,6 +171,7 @@ private:
         }
 
     decode_exec:
+        debug_inst = cur_instr;
         is_rvc = (inst->r_type.opcode & 0b11) != 0b11;
         if (!is_rvc)
         {
