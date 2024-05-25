@@ -12,8 +12,6 @@ obj_dir/V$(TOP_NAME): src/* $(SRC_FILE) ../soft/start.bin
 verilog:
 	$(MAKE) -C $(CHISEL_DIR) verilog
 	cp $(CHISEL_DIR)/build/PuaCpu.v $(SRC_DIR)
-	# $(MAKE) no_trace
-	$(MAKE) func
 
 no_trace: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop_axi_wrapper -os -pc -printpc 
@@ -23,9 +21,9 @@ no_diff: obj_dir/V$(TOP_NAME)
 
 func: obj_dir/V$(TOP_NAME)
 	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/dhrystone.riscv.bin -rvtest -trace 100000 -pc #-delay
-	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/dhrystone.riscv.bin -rvtest -trace 100000 -pc
-	./obj_dir/Vtop_axi_wrapper -os -pc -starttrace 184500000 #-nodiff -printpc
-	# ./obj_dir/Vtop_axi_wrapper -os -pc -printpc
+	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/mm.riscv.bin -rvtest #-trace 10000000 -pc #-delay
+	# ./obj_dir/Vtop_axi_wrapper -os -pc -printpc # -starttrace 184530000 #-nodiff 
+	./obj_dir/Vtop_axi_wrapper -os -pc -printpc
 	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
 	# ./run_riscv_test.py
 

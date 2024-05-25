@@ -303,19 +303,19 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         top->MSI = clint.m_s_irq(0);
         top->MTI = clint.m_t_irq(0);
         top->SEI = plic.get_int(1);
-        if (cemu_plic.get_int(0) != plic.get_int(0) || cemu_clint.m_s_irq(0) != clint.m_s_irq(0) || cemu_clint.m_t_irq(0) != clint.m_t_irq(0) || cemu_plic.get_int(1) != plic.get_int(1))
-        {
-            printf("cemu_int\n");
-            printf("cemu_plic.get_int(0) = %d\n", cemu_plic.get_int(0));
-            printf("cemu_clint.m_s_irq(0) = %d\n", cemu_clint.m_s_irq(0));
-            printf("cemu_clint.m_t_irq(0) = %d\n", cemu_clint.m_t_irq(0));
-            printf("cemu_plic.get_int(1) = %d\n", cemu_plic.get_int(1));
-            printf("rtl_int\n");
-            printf("plic.get_int(0) = %d\n", plic.get_int(0));
-            printf("clint.m_s_irq(0) = %d\n", clint.m_s_irq(0));
-            printf("clint.m_t_irq(0) = %d\n", clint.m_t_irq(0));
-            printf("plic.get_int(1) = %d\n", plic.get_int(1));
-        }
+        // if (cemu_plic.get_int(0) != plic.get_int(0) || cemu_clint.m_s_irq(0) != clint.m_s_irq(0) || cemu_clint.m_t_irq(0) != clint.m_t_irq(0) || cemu_plic.get_int(1) != plic.get_int(1))
+        // {
+        //     printf("cemu_int\n");
+        //     printf("cemu_plic.get_int(0) = %d\n", cemu_plic.get_int(0));
+        //     printf("cemu_clint.m_s_irq(0) = %d\n", cemu_clint.m_s_irq(0));
+        //     printf("cemu_clint.m_t_irq(0) = %d\n", cemu_clint.m_t_irq(0));
+        //     printf("cemu_plic.get_int(1) = %d\n", cemu_plic.get_int(1));
+        //     printf("rtl_int\n");
+        //     printf("plic.get_int(0) = %d\n", plic.get_int(0));
+        //     printf("clint.m_s_irq(0) = %d\n", clint.m_s_irq(0));
+        //     printf("clint.m_t_irq(0) = %d\n", clint.m_t_irq(0));
+        //     printf("plic.get_int(1) = %d\n", plic.get_int(1));
+        // }
         if (rst_ticks > 0)
         {
             top->reset = 1;
