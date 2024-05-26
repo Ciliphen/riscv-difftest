@@ -36,7 +36,7 @@ trace: obj_dir/V$(TOP_NAME)
 
 # 生成RV模拟器的标准trace
 golden_trace: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64mi-p-illegal.bin -rvtest -golden_trace
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ui-p-lui.bin -rvtest -golden_trace
 
 ../soft/start.bin:
 	cd ../soft && make

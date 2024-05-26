@@ -674,17 +674,8 @@ void make_cpu_trace(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
         }
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
-            if (top->debug_commit != 0)
-            {
-                fprintf(trace_file, "1 %016lx %02x %016lx\n", top->debug_pc, top->debug_rf_wnum, top->debug_rf_wdata);
-            }
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
-            if (top->debug_pc == 4 && cemu_rvcore.debug_pc == 0)
-            {
-                printf("Test passed!\n");
-                running = false;
-            }
             if ((top->debug_pc != cemu_rvcore.debug_pc ||
                  cemu_rvcore.debug_reg_num != 0 &&
                      (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
@@ -705,6 +696,7 @@ void make_cpu_trace(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
                 else if (delay-- == 0)
                     running = false;
             }
+            fprintf(trace_file, "1 %016lx %02lx %016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
         }
         if (trace_on)
         {
