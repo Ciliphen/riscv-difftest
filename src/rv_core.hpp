@@ -19,6 +19,7 @@ extern long long bru_pred_fail;
 extern long long bru_pred_fail;
 extern long long dual_issue_cnt;
 extern long long commit_cnt;
+extern long long clock_cnt;
 
 enum alu_op
 {
@@ -125,7 +126,7 @@ private:
                 printf("dcache hit rate: %.2lf\n", 1.0 * dcache_hit / dcache_req * 100);
                 printf("branch predication accuracy: %.2lf\n", (1 - 1.0 * bru_pred_fail / bru_pred_branch) * 100);
                 printf("dual issue rate: %.2lf\n", 1.0 * dual_issue_cnt / commit_cnt * 100);
-                printf("IPC: %.2lf\n", 1.0 * commit_cnt / priv.get_cycle());
+                printf("IPC: %.2lf\n", 1.0 * commit_cnt / clock_cnt);
             }
 
             printf("Test timeout! at pc 0x%lx\n", pc);
