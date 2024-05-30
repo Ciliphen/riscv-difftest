@@ -28,7 +28,7 @@ func: obj_dir/V$(TOP_NAME)
 	./test/run_riscv_test.py
 
 os: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper -os -pc -cemu
+	./obj_dir/Vtop_axi_wrapper -os -pc -emu
 
 perf: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop_axi_wrapper ./test/bin/riscv-test/dhrystone.riscv.bin -rvtest -perf

@@ -836,7 +836,7 @@ int main(int argc, char **argv, char **env)
         {
             difftest = false;
         }
-        else if (strcmp(argv[i], "-cemu") == 0)
+        else if (strcmp(argv[i], "-emu") == 0)
         {
             run_mode = CEMU_RUM;
         }
