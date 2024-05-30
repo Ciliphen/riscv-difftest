@@ -20,15 +20,18 @@ no_diff: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop_axi_wrapper -os -pc -printpc -nodiff
 
 func: obj_dir/V$(TOP_NAME)
-	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/dhrystone.riscv.bin -rvtest -trace 100000 -pc #-delay
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/rv64ui-p-lui.bin -rvtest -trace 100000 -pc #-delay
 	# ./obj_dir/Vtop_axi_wrapper ./tests-bin/mm.riscv.bin -rvtest #-trace 10000000 -pc #-delay
 	# ./obj_dir/Vtop_axi_wrapper -os -pc -printpc # -starttrace 184530000 #-nodiff 
-	./obj_dir/Vtop_axi_wrapper -os -pc -printpc
+	# ./obj_dir/Vtop_axi_wrapper -os -pc -printpc
 	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
 	# ./run_riscv_test.py
 
+os: obj_dir/V$(TOP_NAME)
+	./obj_dir/Vtop_axi_wrapper -os -pc -cemu
+
 perf: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper ./tests-bin/pmp.riscv.bin -rvtest -printpc -perf
+	./obj_dir/Vtop_axi_wrapper ./tests-bin/dhrystone.riscv.bin -rvtest -perf
 
 # 生成My的trace
 trace: obj_dir/V$(TOP_NAME)
