@@ -5,10 +5,12 @@ obj_dir
 test/soft/
 core/
 !core/top_axi_wrapper.v
-test/sim/trace.fst
-test/sim/golden_trace.txt
-test/sim/*.bin
 
 test/sim/gen_bin/build/*
 test/sim/trace.txt
 test/sim/*.s
+test/gen_bin/build/*
+golden_trace.txt
+trace.fst
+trace.gtkw
+trace.txt
