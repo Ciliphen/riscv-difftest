@@ -11,14 +11,6 @@
 #include "rv_sv39.hpp"
 
 extern bool run_riscv_test;
-extern bool perf_count;
-extern long long icache_req;
-extern long long dcache_req;
-extern long long icache_hit;
-extern long long dcache_hit;
-extern long long dual_issue_cnt;
-extern long long commit_cnt;
-
 class rv_priv
 {
 public:

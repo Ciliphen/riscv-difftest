@@ -49,12 +49,7 @@ module top_axi_wrapper(
     output      debug_csr_interrupt,
     output[63:0]debug_csr_mcycle,
     output[63:0]debug_csr_mip,
-    output[63:0]debug_csr_minstret,
-    // perf
-    output      debug_perf_icache_req,
-    output      debug_perf_icache_hit,
-    output      debug_perf_dcache_req,
-    output      debug_perf_dcache_hit
+    output[63:0]debug_csr_minstret
 );
 
 PuaCpu core(
@@ -108,12 +103,7 @@ PuaCpu core(
     .io_debug_csr_mcycle      (debug_csr_mcycle),
     .io_debug_csr_mip         (debug_csr_mip),
     .io_debug_csr_interrupt   (debug_csr_interrupt),
-    .io_debug_csr_minstret    (debug_csr_minstret),
-    // perf
-    .io_debug_perf_icache_req (debug_perf_icache_req),
-    .io_debug_perf_icache_hit (debug_perf_icache_hit),
-    .io_debug_perf_dcache_req (debug_perf_dcache_req),
-    .io_debug_perf_dcache_hit (debug_perf_dcache_hit)
+    .io_debug_csr_minstret    (debug_csr_minstret)
 );
 
 endmodule

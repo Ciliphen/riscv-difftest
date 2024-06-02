@@ -10,13 +10,6 @@
 #include <queue>
 
 extern bool run_riscv_test;
-extern long long icache_req;
-extern long long dcache_req;
-extern long long icache_hit;
-extern long long dcache_hit;
-extern long long dual_issue_cnt;
-extern long long commit_cnt;
-extern long long clock_cnt;
 
 enum alu_op
 {
@@ -117,14 +110,6 @@ private:
         debug_reg_wdata = 0;
         if (run_riscv_test && priv.get_cycle() >= 1e6) // 默认是1e6
         {
-            if (perf_count)
-            {
-                printf("icache hit rate: %.2lf\n", 1.0 * icache_hit / icache_req * 100);
-                printf("dcache hit rate: %.2lf\n", 1.0 * dcache_hit / dcache_req * 100);
-                printf("dual issue rate: %.2lf\n", 1.0 * dual_issue_cnt / commit_cnt * 100);
-                printf("IPC: %.2lf\n", 1.0 * commit_cnt / clock_cnt);
-            }
-
             printf("Test timeout! at pc 0x%lx\n", pc);
             exit(1);
         }
@@ -709,14 +694,6 @@ private:
                                         if (GPR[10] == 0)
                                         {
                                             printf("Test Pass!\n");
-                                            if (perf_count)
-                                            {
-                                                printf("icache hit rate: %.2lf\n", 1.0 * icache_hit / icache_req * 100);
-                                                printf("dcache hit rate: %.2lf\n", 1.0 * dcache_hit / dcache_req * 100);
-                                                printf("dual issue rate: %.2lf\n", 1.0 * dual_issue_cnt / commit_cnt * 100);
-                                                printf("IPC: %.2lf\n", 1.0 * commit_cnt / priv.get_cycle());
-                                            }
-
                                             exit(0);
                                         }
                                         else

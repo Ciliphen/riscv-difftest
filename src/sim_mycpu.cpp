@@ -22,13 +22,6 @@ const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
 std::atomic_bool trace_on = false;
 long sim_time = 1e8;
-long long icache_req = 0;
-long long dcache_req = 0;
-long long icache_hit = 0;
-long long dcache_hit = 0;
-long long dual_issue_cnt = 0;
-long long commit_cnt = 0;
-long long clock_cnt = 0;
 
 long long current_pc;
 
@@ -519,7 +512,6 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
     axi4_xbar<32, 64, 4> mmio;
 
     mmio_mem rtl_mem(128 * 1024 * 1024, riscv_test_path);
-    rtl_mem.set_diff_mem(cemu_mem.get_mem_ptr());
     assert(mmio.add_dev(0x80000000, 128 * 1024 * 1024, &rtl_mem));
     // setup rtl }
 
@@ -552,15 +544,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
             mmio.beat(mmio_sigs_ref);
             mmio_sigs.update_output(mmio_ref);
             top->eval();
-            icache_req += top->debug_perf_icache_req;
-            dcache_req += top->debug_perf_dcache_req;
-            icache_hit += top->debug_perf_icache_hit;
-            dcache_hit += top->debug_perf_dcache_hit;
-            clock_cnt++;
         }
-        commit_cnt += top->debug_commit;
-        if (!top->clock && !top->reset)
-            dual_issue_cnt += top->debug_commit;
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
             cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_minstret, top->debug_csr_mip, top->debug_csr_interrupt);
