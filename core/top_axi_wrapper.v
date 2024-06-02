@@ -54,9 +54,7 @@ module top_axi_wrapper(
     output      debug_perf_icache_req,
     output      debug_perf_icache_hit,
     output      debug_perf_dcache_req,
-    output      debug_perf_dcache_hit,
-    output      debug_perf_bru_pred_branch,
-    output      debug_perf_bru_pred_fail
+    output      debug_perf_dcache_hit
 );
 
 PuaCpu core(
@@ -115,9 +113,7 @@ PuaCpu core(
     .io_debug_perf_icache_req (debug_perf_icache_req),
     .io_debug_perf_icache_hit (debug_perf_icache_hit),
     .io_debug_perf_dcache_req (debug_perf_dcache_req),
-    .io_debug_perf_dcache_hit (debug_perf_dcache_hit),
-    .io_debug_perf_bru_pred_branch (debug_perf_bru_pred_branch),
-    .io_debug_perf_bru_pred_fail (debug_perf_bru_pred_fail)
+    .io_debug_perf_dcache_hit (debug_perf_dcache_hit)
 );
 
 endmodule

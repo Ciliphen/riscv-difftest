@@ -16,9 +16,6 @@ extern long long icache_req;
 extern long long dcache_req;
 extern long long icache_hit;
 extern long long dcache_hit;
-extern long long bru_pred_branch;
-extern long long bru_pred_fail;
-extern long long bru_pred_fail;
 extern long long dual_issue_cnt;
 extern long long commit_cnt;
 

@@ -14,9 +14,6 @@ extern long long icache_req;
 extern long long dcache_req;
 extern long long icache_hit;
 extern long long dcache_hit;
-extern long long bru_pred_branch;
-extern long long bru_pred_fail;
-extern long long bru_pred_fail;
 extern long long dual_issue_cnt;
 extern long long commit_cnt;
 extern long long clock_cnt;
@@ -124,7 +121,6 @@ private:
             {
                 printf("icache hit rate: %.2lf\n", 1.0 * icache_hit / icache_req * 100);
                 printf("dcache hit rate: %.2lf\n", 1.0 * dcache_hit / dcache_req * 100);
-                printf("branch predication accuracy: %.2lf\n", (1 - 1.0 * bru_pred_fail / bru_pred_branch) * 100);
                 printf("dual issue rate: %.2lf\n", 1.0 * dual_issue_cnt / commit_cnt * 100);
                 printf("IPC: %.2lf\n", 1.0 * commit_cnt / clock_cnt);
             }
@@ -717,7 +713,6 @@ private:
                                             {
                                                 printf("icache hit rate: %.2lf\n", 1.0 * icache_hit / icache_req * 100);
                                                 printf("dcache hit rate: %.2lf\n", 1.0 * dcache_hit / dcache_req * 100);
-                                                printf("branch predication accuracy: %.2lf\n", (1 - 1.0 * bru_pred_fail / bru_pred_branch) * 100);
                                                 printf("dual issue rate: %.2lf\n", 1.0 * dual_issue_cnt / commit_cnt * 100);
                                                 printf("IPC: %.2lf\n", 1.0 * commit_cnt / priv.get_cycle());
                                             }

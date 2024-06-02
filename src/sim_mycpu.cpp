@@ -26,8 +26,6 @@ long long icache_req = 0;
 long long dcache_req = 0;
 long long icache_hit = 0;
 long long dcache_hit = 0;
-long long bru_pred_branch = 0;
-long long bru_pred_fail = 0;
 long long dual_issue_cnt = 0;
 long long commit_cnt = 0;
 long long clock_cnt = 0;
@@ -558,8 +556,6 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
             dcache_req += top->debug_perf_dcache_req;
             icache_hit += top->debug_perf_icache_hit;
             dcache_hit += top->debug_perf_dcache_hit;
-            bru_pred_branch += top->debug_perf_bru_pred_branch;
-            bru_pred_fail += top->debug_perf_bru_pred_fail;
             clock_cnt++;
         }
         commit_cnt += top->debug_commit;
