@@ -426,6 +426,12 @@ void os_cemu_run()
         clint.tick();
         plic.update_ext(1, uart.irq());
         rv.step(plic.get_int(0), clint.m_s_irq(0), clint.m_t_irq(0), plic.get_int(1));
+        if (pc_cnt++ >= print_pc_cycle && print_pc)
+            {
+                printf("PC = 0x%016lx, ", rv.debug_pc);
+                printf("INST = 0x%08x\n", rv.debug_inst);
+                pc_cnt = 0;
+            }
         while (uart.exist_tx())
         {
             char c = uart.getc();
