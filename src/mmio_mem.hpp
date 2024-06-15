@@ -1,7 +1,6 @@
 #ifndef MMIO_MEM_H
 #define MMIO_MEM_H
 
-#include "axi4.hpp"
 #include "mmio_dev.hpp"
 
 #include <fstream>

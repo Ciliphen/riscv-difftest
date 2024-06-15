@@ -37,7 +37,7 @@ def run_all():
         print("========================================")
         print("Testing {}: \n".format(x), end="", flush=True)
         os.system(
-            "./obj_dir/Vtop_axi_wrapper {}/{}.bin -rvtest -perf".format(DST_DIR, x)
+            "./obj_dir/Vtop {}/{}.bin -rvtest -perf".format(DST_DIR, x)
         )
 
 

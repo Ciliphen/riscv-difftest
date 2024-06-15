@@ -24,7 +24,7 @@ file_list.sort()
 def run_all():
     for x in file_list:
         print("Testing {}: ".format(x), end="", flush=True)
-        os.system("./obj_dir/Vtop_axi_wrapper {}/{}.bin -rvtest".format(DST_DIR, x))
+        os.system("./obj_dir/Vtop {}/{}.bin -rvtest".format(DST_DIR, x))
 
 
 run_all()
