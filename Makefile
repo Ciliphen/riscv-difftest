@@ -24,6 +24,7 @@ func: obj_dir/V$(TOP_NAME)
 	# ./test/run_riscv_test.py
 
 test: obj_dir/V$(TOP_NAME)
+	./obj_dir/Vtop ./test/gen_bin/build/test.bin -rvtest -golden_trace
 	./obj_dir/Vtop ./test/gen_bin/build/test.bin -rvtest -trace 10000000 -pc
 
 perf: obj_dir/V$(TOP_NAME)

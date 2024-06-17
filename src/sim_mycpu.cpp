@@ -56,17 +56,18 @@ void assert(bool expr, const char *msg = "")
 #include <csignal>
 #include <sstream>
 
-void connect_wire(nscscc_sram_ptr &sram_ptr, Vtop *top) {
-    sram_ptr.inst_sram_en       = &(top->inst_sram_en);
-    sram_ptr.inst_sram_addr     = &(top->inst_sram_addr);
-    sram_ptr.inst_sram_wen      = &(top->inst_sram_wen);
-    sram_ptr.inst_sram_rdata    = &(top->inst_sram_rdata);
-    sram_ptr.inst_sram_wdata    = &(top->inst_sram_wdata);
-    sram_ptr.data_sram_en       = &(top->data_sram_en);
-    sram_ptr.data_sram_addr     = &(top->data_sram_addr);
-    sram_ptr.data_sram_wen      = &(top->data_sram_wen);
-    sram_ptr.data_sram_rdata    = &(top->data_sram_rdata);
-    sram_ptr.data_sram_wdata    = &(top->data_sram_wdata);
+void connect_wire(nscscc_sram_ptr &sram_ptr, Vtop *top)
+{
+    sram_ptr.inst_sram_en = &(top->inst_sram_en);
+    sram_ptr.inst_sram_addr = &(top->inst_sram_addr);
+    sram_ptr.inst_sram_wen = &(top->inst_sram_wen);
+    sram_ptr.inst_sram_rdata = &(top->inst_sram_rdata);
+    sram_ptr.inst_sram_wdata = &(top->inst_sram_wdata);
+    sram_ptr.data_sram_en = &(top->data_sram_en);
+    sram_ptr.data_sram_addr = &(top->data_sram_addr);
+    sram_ptr.data_sram_wen = &(top->data_sram_wen);
+    sram_ptr.data_sram_rdata = &(top->data_sram_rdata);
+    sram_ptr.data_sram_wdata = &(top->data_sram_wdata);
 }
 
 void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test_path)
@@ -80,6 +81,10 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
+    for (int i = 0; i < 32; i++)
+    {
+        cemu_rvcore.set_GPR(i, i);
+    }
     // cemu_rvcore.set_difftest_mode(true);
     // setup cemu }
 
@@ -182,6 +187,10 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
+    for (int i = 0; i < 32; i++)
+    {
+        cemu_rvcore.set_GPR(i, i);
+    }
     // setup cemu }
 
     // setup rtl {
@@ -287,6 +296,10 @@ void make_golden_trace(const char *riscv_test_path)
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
+    for (int i = 0; i < 32; i++)
+    {
+        cemu_rvcore.set_GPR(i, i);
+    }
     // setup cemu }
 
     FILE *golden_trace_file;
@@ -304,17 +317,7 @@ void make_golden_trace(const char *riscv_test_path)
         // instr retire
         cemu_rvcore.step(0, 0, 0, 0);
         fprintf(golden_trace_file, "1 %016lx %02lx %016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
-        last_commit = ticks;
-
         ticks++;
-        if (ticks - last_commit >= commit_timeout)
-        {
-            printf("\033[1;31mError!\033[0m\n");
-            printf("CPU stuck for %ld cycles!\n", commit_timeout / 2);
-            running = false;
-            if (dump_pc_history)
-                cemu_rvcore.dump_pc_history();
-        }
     }
     printf("total_ticks: %lu\n", ticks);
     fclose(golden_trace_file);

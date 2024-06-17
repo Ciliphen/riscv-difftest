@@ -127,7 +127,7 @@ private:
         rv_instr *inst = (rv_instr *)&cur_instr;
         rv_exc_code if_exc;
     instr_fetch:
-
+        
         if (!difftest_mode)
             priv.pre_exec(meip, msip, mtip, seip);
         else if (int_allow)
