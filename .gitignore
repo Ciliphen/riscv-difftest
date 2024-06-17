@@ -6,11 +6,8 @@ test/soft/
 core/
 !core/top_axi_wrapper.v
 
-test/sim/gen_bin/build/*
-test/sim/trace.txt
-test/sim/*.s
-test/gen_bin/build/*
 golden_trace.txt
 trace.fst
 trace.gtkw
 trace.txt
+test/lab_test/build/*

@@ -30,8 +30,9 @@ trace_lab1: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop ./test/bin/lab-test/lab1.bin -rvtest -initgprs -cpu_trace
 
 test: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop ./test/gen_bin/build/test.bin -rvtest -golden_trace
-	./obj_dir/Vtop ./test/gen_bin/build/test.bin -rvtest -trace 10000000 -pc
+	$(MAKE) -C ./test/lab_test/lab1 test
+	./obj_dir/Vtop ./test/lab_test/build/test.bin -rvtest -golden_trace # -initgprs # lab1记得初始化寄存器堆
+	./obj_dir/Vtop ./test/lab_test/build/test.bin -rvtest -trace 10000000 -pc # -initgprs # lab1记得初始化寄存器堆
 
 perf: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop ./test/bin/riscv-test/dhrystone.riscv.bin -rvtest -perf

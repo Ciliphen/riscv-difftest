@@ -94,7 +94,7 @@ os.system(
     )
 )
 os.system(
-    "riscv64-unknown-linux-gnu-ld -T ./linker.ld -o ./build/{} ./build/{}.o".format(
+    "riscv64-unknown-linux-gnu-ld -T ../config/linker.ld -o ./build/{} ./build/{}.o".format(
         file_name, file_name
     )
 )
@@ -108,3 +108,5 @@ os.system(
         file_name, file_name
     )
 )
+os.system("rm -rf ../build")
+os.system("mv ./build ../")
