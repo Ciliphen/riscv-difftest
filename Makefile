@@ -23,6 +23,9 @@ func: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop ./test/bin/riscv-test/rv64mi-p-csr.bin -rvtest -trace 10000000 -pc #-delay
 	# ./test/run_riscv_test.py
 
+test: obj_dir/V$(TOP_NAME)
+	./obj_dir/Vtop ./test/gen_bin/build/test.bin -rvtest -trace 10000000 -pc
+
 perf: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop ./test/bin/riscv-test/dhrystone.riscv.bin -rvtest -perf
 
