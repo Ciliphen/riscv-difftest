@@ -17,6 +17,7 @@ bool dual_issue = false;
 bool output_trace = false;
 bool difftest = true;
 bool perf_count = false;
+bool init_gprs = false;
 const uint64_t commit_timeout = 3000;
 const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
@@ -81,9 +82,12 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
-    for (int i = 0; i < 32; i++)
+    if (init_gprs)
     {
-        cemu_rvcore.set_GPR(i, i);
+        for (int i = 0; i < 32; i++)
+        {
+            cemu_rvcore.set_GPR(i, i);
+        }
     }
     // cemu_rvcore.set_difftest_mode(true);
     // setup cemu }
@@ -187,9 +191,12 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
-    for (int i = 0; i < 32; i++)
+    if (init_gprs)
     {
-        cemu_rvcore.set_GPR(i, i);
+        for (int i = 0; i < 32; i++)
+        {
+            cemu_rvcore.set_GPR(i, i);
+        }
     }
     // setup cemu }
 
@@ -296,9 +303,12 @@ void make_golden_trace(const char *riscv_test_path)
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
-    for (int i = 0; i < 32; i++)
+    if (init_gprs)
     {
-        cemu_rvcore.set_GPR(i, i);
+        for (int i = 0; i < 32; i++)
+        {
+            cemu_rvcore.set_GPR(i, i);
+        }
     }
     // setup cemu }
 
@@ -390,6 +400,10 @@ int main(int argc, char **argv, char **env)
         else if (strcmp(argv[i], "-nodiff") == 0) // 不进行diff测试
         {
             difftest = false;
+        }
+        else if (strcmp(argv[i], "-initgprs") == 0) // 初始化寄存器
+        {
+            init_gprs = true;
         }
         else
         {
