@@ -78,7 +78,7 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     rv_systembus cemu_system_bus;
     mmio_mem cemu_mem(128 * 1024 * 1024, riscv_test_path);
 
-    assert(cemu_system_bus.add_dev(0x80000000, 128 * 1024 * 1024, &cemu_mem));
+    assert(cemu_system_bus.add_dev(0x80000000, 0x80000000, &cemu_mem));
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
@@ -98,7 +98,7 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     nscscc_sram_xbar mmio;
 
     mmio_mem rtl_mem(128 * 1024 * 1024, riscv_test_path);
-    assert(mmio.add_dev(0x80000000, 128 * 1024 * 1024, &rtl_mem));
+    assert(mmio.add_dev(0x80000000, 0x80000000, &rtl_mem));
     // setup rtl }
 
     // connect Vcd for trace
@@ -187,7 +187,7 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     rv_systembus cemu_system_bus;
     mmio_mem cemu_mem(128 * 1024 * 1024, riscv_test_path);
 
-    assert(cemu_system_bus.add_dev(0x80000000, 128 * 1024 * 1024, &cemu_mem));
+    assert(cemu_system_bus.add_dev(0x80000000, 0x80000000, &cemu_mem));
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
@@ -207,7 +207,7 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
 
     mmio_mem rtl_mem(128 * 1024 * 1024, riscv_test_path);
 
-    assert(mmio.add_dev(0x80000000, 128 * 1024 * 1024, &rtl_mem));
+    assert(mmio.add_dev(0x80000000, 0x80000000, &rtl_mem));
     // setup rtl }
 
     // connect Vcd for trace
@@ -299,7 +299,7 @@ void make_golden_trace(const char *riscv_test_path)
     rv_systembus cemu_system_bus;
     mmio_mem cemu_mem(128 * 1024 * 1024, riscv_test_path);
 
-    assert(cemu_system_bus.add_dev(0x80000000, 128 * 1024 * 1024, &cemu_mem));
+    assert(cemu_system_bus.add_dev(0x80000000, 0x80000000, &cemu_mem));
 
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);

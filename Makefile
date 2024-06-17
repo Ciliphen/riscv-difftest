@@ -4,7 +4,7 @@ SRC_FILE := $(shell find $(SRC_DIR) -name '*.svh') $(shell find $(SRC_DIR) -name
 CHISEL_DIR = ../chisel
 BUILD_DIR = $(CHISEL_DIR)/build
 
-TESTS := lab2 lab3
+TESTS := lab2 lab3 lab4
 TRACE_TESTS := $(addprefix trace_,$(TESTS))
 
 .PHONY: clean
@@ -27,7 +27,7 @@ func: obj_dir/V$(TOP_NAME)
 	# ./test/run_riscv_test.py
 
 test: obj_dir/V$(TOP_NAME)
-	$(MAKE) -C ./test/lab_test/lab3 test
+	$(MAKE) -C ./test/lab_test/lab4 test
 	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -golden_trace # -initgprs # lab1记得初始化寄存器堆
 	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -trace 10000000 -pc # -initgprs # lab1记得初始化寄存器堆
 
