@@ -30,7 +30,7 @@ trace_lab1: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop ./test/bin/lab-test/lab1.bin -rvtest -initgprs -cpu_trace
 
 test: obj_dir/V$(TOP_NAME)
-	$(MAKE) -C ./test/lab_test/lab1 test
+	$(MAKE) -C ./test/lab_test/lab2 test
 	./obj_dir/Vtop ./test/lab_test/build/test.bin -rvtest -golden_trace # -initgprs # lab1记得初始化寄存器堆
 	./obj_dir/Vtop ./test/lab_test/build/test.bin -rvtest -trace 10000000 -pc # -initgprs # lab1记得初始化寄存器堆
 
