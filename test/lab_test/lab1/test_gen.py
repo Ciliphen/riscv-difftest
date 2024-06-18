@@ -17,7 +17,7 @@ reg_status = {r: 0 for r in reg}
 
 
 def get_available_reg(reg, reg_status):
-    reg_status["x1"] = 5  # x1寄存器一直被占用，不可用
+    reg_status["x1"] = 4  # x1寄存器一直被占用，不可用
     available_regs = [r for r, status in reg_status.items() if status == 0]
     if not available_regs:  # 如果没有可用的寄存器，则返回x0
         return reg[0]
@@ -36,11 +36,11 @@ def set_gpr(index, value):
         update_reg_status(reg_status)
     # 初始化寄存器
     f.write(f"\tadd {index}, x0, x0\n")
-    for i in range(5):
+    for i in range(3):
         f.write(f"\tnop\n")
     for i in range(value):
         f.write(f"\tadd {index}, {index}, x1\n")
-        for i in range(5):
+        for i in range(3):
             f.write(f"\tnop\n")
 
 
@@ -55,7 +55,7 @@ def test_inst(inst, n=10000):
         rs1 = get_available_reg(reg, reg_status)
         rs2 = get_available_reg(reg, reg_status)
         f.write(f"\t{inst} {rd}, {rs1}, {rs2}\n")
-        reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+        reg_status[rd] = 4
         update_reg_status(reg_status)  # 更新寄存器状态
 
 
@@ -66,7 +66,7 @@ def random_test_inst(insts, n=10000):
         rs1 = get_available_reg(reg, reg_status)
         rs2 = get_available_reg(reg, reg_status)
         f.write(f"\t{inst} {rd}, {rs1}, {rs2}\n")
-        reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+        reg_status[rd] = 4
         update_reg_status(reg_status)  # 更新寄存器状态
 
 if not os.path.exists("build"):
@@ -75,12 +75,12 @@ with open("./build/{}.s".format(file_name), "w") as f:
     f.write(".text\n")
     f.write(".global _start\n")
     f.write("_start:\n")
+    init_gpr()
     random_test_inst(inst_add)
     init_gpr()
     for i in inst_shift:
         test_inst(i, 100)
         init_gpr()
-
     # 结束程序
     set_gpr("x3", 1)
     set_gpr("x17", 93)

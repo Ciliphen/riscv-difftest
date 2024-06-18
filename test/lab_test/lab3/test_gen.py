@@ -40,7 +40,21 @@ inst_imm = [
 inst_lui = ["lui", "auipc"]
 inst_shift_imm6 = ["slli", "srli", "srai"]
 inst_shift_imm5 = ["slliw", "srliw", "sraiw"]
-inst_mul = ["mul", "mulh", "mulhsu", "mulhu", "div", "divu", "rem", "remu", "mulw", "divw", "divuw", "remw", "remuw"]
+inst_mul = [
+    "mul",
+    "mulh",
+    "mulhsu",
+    "mulhu",
+    "div",
+    "divu",
+    "rem",
+    "remu",
+    "mulw",
+    "divw",
+    "divuw",
+    "remw",
+    "remuw",
+]
 
 file_name = "test"
 
@@ -69,7 +83,7 @@ def test_reg_inst(insts=inst_reg):
     rs1 = get_available_reg(reg, reg_status)
     rs2 = get_available_reg(reg, reg_status)
     f.write(f"\t{inst} {rd}, {rs1}, {rs2}\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
 
 
@@ -82,9 +96,9 @@ def test_imm_inst():
     elif inst in inst_shift_imm5:
         imm = random.randint(0, 2**5 - 1)
     else:
-        imm = random.randint(0, 2**11 - 1)
+        imm = random.randint(-2 * 11, 2**11 - 1)
     f.write(f"\t{inst} {rd}, {rs1}, {imm}\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
 
 
@@ -93,7 +107,7 @@ def test_lui_inst():
     rd = get_available_reg(reg, reg_status)
     imm = random.randint(0, 2**20 - 1)
     f.write(f"\t{inst} {rd}, {imm}\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
 
 

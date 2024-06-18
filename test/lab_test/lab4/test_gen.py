@@ -87,7 +87,7 @@ def test_reg_inst(insts=inst_reg):
     rs1 = get_available_reg(reg, reg_status)
     rs2 = get_available_reg(reg, reg_status)
     f.write(f"\t{inst} {rd}, {rs1}, {rs2}\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
 
 
@@ -100,9 +100,9 @@ def test_imm_inst():
     elif inst in inst_shift_imm5:
         imm = random.randint(0, 2**5 - 1)
     else:
-        imm = random.randint(0, 2**11 - 1)
+        imm = random.randint(-(2**11), 2**11 - 1)
     f.write(f"\t{inst} {rd}, {rs1}, {imm}\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
 
 
@@ -111,7 +111,7 @@ def test_lui_inst():
     rd = get_available_reg(reg, reg_status)
     imm = random.randint(0, 2**20 - 1)
     f.write(f"\t{inst} {rd}, {imm}\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
 
 
@@ -121,99 +121,91 @@ def wait_gpr(index):
         update_reg_status(reg_status)
 
 
-def insert_nop():
-    for i in range(5):
+def insert_nop(n=3):
+    for i in range(n):
         f.write("\tnop\n")
         update_reg_status(reg_status)
 
 
 def test_lb():
-    insert_nop()
     f.write("\taddiw x1, x0, 1025\n")
     insert_nop()
     f.write("\tslli x1, x1, 0x15\n")  # x1=0x80200000
     insert_nop()
     rd = get_available_reg(reg, reg_status)
-    while rd == 'x1':
+    while rd == "x1":
         rd = get_available_reg(reg, reg_status)
-    rs1 = 'x1'
-    imm = random.randint(0, 2**11 - 1)
+    rs1 = "x1"
+    imm = random.randint(-(2**11), 2**11 - 1)
     f.write(f"\tsb {rd}, {imm}({rs1})\n")
-    insert_nop()
     f.write(f"\tlb {rd}, {imm}({rs1})\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
     rd = get_available_reg(reg, reg_status)
-    while rd == 'x1':
+    while rd == "x1":
         rd = get_available_reg(reg, reg_status)
     f.write(f"\tlbu {rd}, {imm}({rs1})\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
 
 
 def test_lh():
-    insert_nop()
     f.write("\taddiw x1, x0, 1025\n")
     insert_nop()
     f.write("\tslli x1, x1, 0x15\n")  # x1=0x80200000
     insert_nop()
     rd = get_available_reg(reg, reg_status)
-    while rd == 'x1':
+    while rd == "x1":
         rd = get_available_reg(reg, reg_status)
-    rs1 = 'x1'
-    imm = random.randint(0, 2**11 - 1) & 0xFFFFFFFE
+    rs1 = "x1"
+    imm = random.randint(-(2**11), 2**11 - 1) & 0xFFFFFFFFFFFFFFFE
     f.write(f"\tsh {rd}, {imm}({rs1})\n")
-    insert_nop()
     f.write(f"\tlh {rd}, {imm}({rs1})\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
     rd = get_available_reg(reg, reg_status)
-    while rd == 'x1':
+    while rd == "x1":
         rd = get_available_reg(reg, reg_status)
     f.write(f"\tlhu {rd}, {imm}({rs1})\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
 
 
 def test_lw():
-    insert_nop()
     f.write("\taddiw x1, x0, 1025\n")
     insert_nop()
     f.write("\tslli x1, x1, 0x15\n")  # x1=0x80200000
     insert_nop()
     rd = get_available_reg(reg, reg_status)
-    while rd == 'x1':
+    while rd == "x1":
         rd = get_available_reg(reg, reg_status)
-    rs1 = 'x1'
-    imm = random.randint(0, 2**11 - 1) & 0xFFFFFFFC
+    rs1 = "x1"
+    imm = random.randint(-(2**11), 2**11 - 1) & 0xFFFFFFFFFFFFFFFC
     f.write(f"\tsw {rd}, {imm}({rs1})\n")
-    insert_nop()
     f.write(f"\tlw {rd}, {imm}({rs1})\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
     rd = get_available_reg(reg, reg_status)
-    while rd == 'x1':
+    while rd == "x1":
         rd = get_available_reg(reg, reg_status)
     f.write(f"\tlwu {rd}, {imm}({rs1})\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
 
 
 def test_ld():
-    insert_nop()
     f.write("\taddiw x1, x0, 1025\n")
     insert_nop()
     f.write("\tslli x1, x1, 0x15\n")  # x1=0x80200000
     insert_nop()
     rd = get_available_reg(reg, reg_status)
-    while rd == 'x1':
+    while rd == "x1":
         rd = get_available_reg(reg, reg_status)
-    rs1 = 'x1'
-    imm = random.randint(0, 2**11 - 1) & 0xFFFFFFF8
+    rs1 = "x1"
+    imm = random.randint(-(2**11), 2**11 - 1) & 0xFFFFFFFFFFFFFFF8
     f.write(f"\tsd {rd}, {imm}({rs1})\n")
-    insert_nop()
     f.write(f"\tld {rd}, {imm}({rs1})\n")
-    reg_status[rd] = 5  # 寄存器被写入后设置为5，表示5个循环后可用
+    reg_status[rd] = 4  # 解决数据冲突
     update_reg_status(reg_status)  # 更新寄存器状态
 
 
@@ -229,7 +221,7 @@ with open("./build/{}.s".format(file_name), "w") as f:
     instructions = [test_lb, test_lh, test_lw, test_ld]
     for i in range(10000):
         test_reg_inst()
-        random.choice([test_lui_inst, test_lui_inst, test_reg_inst])()
+        random.choice([test_imm_inst, test_lui_inst, test_reg_inst])()
         random.choice(instructions)()
     # 结束程序
     wait_gpr(3)
