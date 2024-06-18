@@ -24,9 +24,9 @@ func: obj_dir/V$(TOP_NAME)
 	# ./test/run_riscv_test.py
 
 test: obj_dir/V$(TOP_NAME)
-	$(MAKE) -C ./test/lab_test/lab5 test
-	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -golden_trace # -initgprs # lab1记得初始化寄存器堆
-	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -trace 10000000 -pc # -initgprs # lab1记得初始化寄存器堆
+	$(MAKE) -C ./test/lab_test/lab6 test
+	# ./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -golden_trace # -initgprs # lab1记得初始化寄存器堆
+	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -perf #-trace 10000000 -pc # -initgprs # lab1记得初始化寄存器堆
 
 perf: obj_dir/V$(TOP_NAME)
 	./obj_dir/V$(TOP_NAME) ./test/bin/riscv-test/dhrystone.riscv.bin -rvtest -perf
@@ -67,6 +67,9 @@ $(TEST67): obj_dir/V$(TOP_NAME)
 		echo "Running test $$count: $$test"; \
 		./obj_dir/V$(TOP_NAME) $$test -rvtest -pc; \
 	done; \
+	count=$$((count + 1)); \
+	echo "Running test $$count: ./test/bin/lab-test/lab6.bin"; \
+	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab6.bin -rvtest -pc -perf; \
 	echo "Total tests run: $$count";
 
 $(TRACE_TESTS67): obj_dir/V$(TOP_NAME)
@@ -77,6 +80,9 @@ $(TRACE_TESTS67): obj_dir/V$(TOP_NAME)
 		echo "Running test $$count: $$test"; \
 		./obj_dir/V$(TOP_NAME) $$test -rvtest -cpu_trace -writeappend; \
 	done; \
+	count=$$((count + 1)); \
+	echo "Running test $$count: ./test/bin/lab-test/lab6.bin"; \
+	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab6.bin -rvtest -cpu_trace -writeappend; \
 	echo "Total tests run: $$count";
 
 # mv:

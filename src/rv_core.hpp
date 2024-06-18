@@ -698,7 +698,7 @@ private:
                             {
                             case 0:
                             { // ECALL
-                                if (run_riscv_test && GPR[3] == 1)
+                                if (run_riscv_test && GPR[17] == 93)
                                 {
                                     if (GPR[17] == 93)
                                     {
