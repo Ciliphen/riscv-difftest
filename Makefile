@@ -48,16 +48,19 @@ lab1: obj_dir/V$(TOP_NAME)
 trace_lab1: obj_dir/V$(TOP_NAME)
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab1.bin -rvtest -initgprs -cpu_trace
 
-TESTS := lab2 lab3 lab4
-TRACE_TESTS := $(addprefix trace_,$(TESTS))
+TESTS234 := lab2 lab3 lab4
+TRACE_TESTS234 := $(addprefix trace_,$(TESTS234))
 
-$(TESTS): %: obj_dir/V$(TOP_NAME)
+$(TESTS234): %: obj_dir/V$(TOP_NAME)
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/$@.bin -rvtest -trace 10000000 -pc
 
-$(TRACE_TESTS): trace_%: obj_dir/V$(TOP_NAME)
+$(TRACE_TESTS234): trace_%: obj_dir/V$(TOP_NAME)
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/$*.bin -rvtest -cpu_trace
 
-lab6: obj_dir/V$(TOP_NAME)
+TEST67 := lab6 lab7
+TRACE_TESTS67 := $(addprefix trace_,$(TEST67))
+
+$(TEST67): obj_dir/V$(TOP_NAME)
 	count=0; \
 	for test in ./test/bin/am-tests/*; do \
 		count=$$((count + 1)); \
@@ -66,7 +69,7 @@ lab6: obj_dir/V$(TOP_NAME)
 	done; \
 	echo "Total tests run: $$count";
 
-trace_lab6: obj_dir/V$(TOP_NAME)
+$(TRACE_TESTS67): obj_dir/V$(TOP_NAME)
 	rm -rf ./trace.txt
 	count=0; \
 	for test in ./test/bin/am-tests/*; do \

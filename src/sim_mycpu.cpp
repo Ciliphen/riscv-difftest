@@ -14,9 +14,7 @@ bool dump_pc_history = false;
 bool print_pc = false;
 bool should_delay = false;
 bool dual_issue = false;
-bool output_trace = false;
-bool difftest = true;
-bool perf_count = false;
+bool perf_counter = false;
 bool init_gprs = false;
 bool write_append = false;
 const uint64_t commit_timeout = 3000;
@@ -25,7 +23,8 @@ long trace_start_time = 0; // -starttrace [time]
 std::atomic_bool trace_on = false;
 long sim_time = 1e8;
 
-long long current_pc;
+long long total_cycle = 0;
+long long total_instr = 0;
 
 VerilatedFstC fst;
 
@@ -132,6 +131,12 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
             mmio_sigs.update_output(mmio_ref);
             top->eval();
         }
+        //===性能计数器=====
+        if (!top->reset && top->clock)
+            total_cycle++;
+        if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
+            total_instr++;
+        //==================
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
             // cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_minstret, top->debug_csr_mip, top->debug_csr_interrupt);
@@ -388,7 +393,7 @@ int main(int argc, char **argv, char **env)
         }
         else if (strcmp(argv[i], "-perf") == 0)
         {
-            perf_count = true;
+            perf_counter = true;
         }
         else if (strcmp(argv[i], "-pc") == 0) // 打印历史PC
         {
@@ -405,16 +410,10 @@ int main(int argc, char **argv, char **env)
         else if (strcmp(argv[i], "-cpu_trace") == 0) // 生成golden trace
         {
             run_mode = CPU_TRACE;
-            output_trace = true;
         }
         else if (strcmp(argv[i], "-golden_trace") == 0) // 生成golden trace
         {
             run_mode = GOLDEN_TRACE;
-            output_trace = true;
-        }
-        else if (strcmp(argv[i], "-nodiff") == 0) // 不进行diff测试
-        {
-            difftest = false;
         }
         else if (strcmp(argv[i], "-initgprs") == 0) // 初始化寄存器
         {

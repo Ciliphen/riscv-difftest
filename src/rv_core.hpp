@@ -10,6 +10,9 @@
 #include <queue>
 
 extern bool run_riscv_test;
+extern bool perf_counter;
+extern long long total_instr;
+extern long long total_cycle;
 
 enum alu_op
 {
@@ -110,7 +113,15 @@ private:
         debug_reg_wdata = 0;
         if (run_riscv_test && priv.get_cycle() >= 1e6) // 默认是1e6
         {
-            printf("Test timeout! at pc 0x%lx\n", pc);
+            printf("\033[31mTest timeout! at pc 0x%lx\n\033[0m", pc);
+            printf("\033[32m");
+            if (perf_counter)
+            {
+                printf("Total instr: %lld\n", total_instr);
+                printf("Total cycle: %lld\n", total_cycle);
+                printf("IPC: %lf\n", (double)total_instr / total_cycle);
+            }
+            printf("\033[0m"); // Reset the text color to default
             exit(1);
         }
         if (trace_size)
@@ -693,7 +704,14 @@ private:
                                     {
                                         if (GPR[10] == 0)
                                         {
-                                            printf("Test Pass!\n");
+                                            printf("\033[32mTest Pass!\n");
+                                            if (perf_counter)
+                                            {
+                                                printf("Total instr: %lld\n", total_instr);
+                                                printf("Total cycle: %lld\n", total_cycle);
+                                                printf("IPC: %lf\n", (double)total_instr / total_cycle);
+                                            }
+                                            printf("\033[0m"); // Reset the text color to default
                                             exit(0);
                                         }
                                         else
@@ -717,7 +735,14 @@ private:
                             case 1: // EBREAK
                                 if (run_riscv_test && GPR[10] == 0)
                                 {
-                                    printf("Test Pass!\n");
+                                    printf("\033[32mTest Pass!\n");
+                                    if (perf_counter)
+                                    {
+                                        printf("Total instr: %lld\n", total_instr);
+                                        printf("Total cycle: %lld\n", total_cycle);
+                                        printf("IPC: %lf\n", (double)total_instr / total_cycle);
+                                    }
+                                    printf("\033[0m"); // Reset the text color to default
                                     exit(0);
                                 }
                                 priv.ebreak();
