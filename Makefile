@@ -66,6 +66,15 @@ lab6: obj_dir/V$(TOP_NAME)
 	done; \
 	echo "Total tests run: $$count";
 
+trace_lab6: obj_dir/V$(TOP_NAME)
+	rm -rf ./trace.txt
+	count=0; \
+	for test in ./test/bin/am-tests/*; do \
+		count=$$((count + 1)); \
+		echo "Running test $$count: $$test"; \
+		./obj_dir/V$(TOP_NAME) $$test -rvtest -cpu_trace -writeappend; \
+	done; \
+	echo "Total tests run: $$count";
 
 # mv:
 # 	dir="./test/asm/riscv-test/isa/rv64ssvnapot-p-"; \

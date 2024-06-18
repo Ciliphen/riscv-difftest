@@ -18,6 +18,7 @@ bool output_trace = false;
 bool difftest = true;
 bool perf_count = false;
 bool init_gprs = false;
+bool write_append = false;
 const uint64_t commit_timeout = 3000;
 const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
@@ -218,7 +219,14 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     }
 
     FILE *trace_file;
-    trace_file = fopen("trace.txt", "w");
+    if (write_append)
+    {
+        trace_file = fopen("trace.txt", "a");
+    }
+    else
+    {
+        trace_file = fopen("trace.txt", "w");
+    }
     if (trace_file == NULL)
     {
         printf("Error opening file!\n");
@@ -313,7 +321,14 @@ void make_golden_trace(const char *riscv_test_path)
     // setup cemu }
 
     FILE *golden_trace_file;
-    golden_trace_file = fopen("golden_trace.txt", "w");
+    if (write_append)
+    {
+        golden_trace_file = fopen("golden_trace.txt", "a");
+    }
+    else
+    {
+        golden_trace_file = fopen("golden_trace.txt", "w");
+    }
     if (golden_trace_file == NULL)
     {
         printf("Error opening file!\n");
@@ -404,6 +419,10 @@ int main(int argc, char **argv, char **env)
         else if (strcmp(argv[i], "-initgprs") == 0) // 初始化寄存器
         {
             init_gprs = true;
+        }
+        else if (strcmp(argv[i], "-writeappend") == 0) // 追加写入
+        {
+            write_append = true;
         }
         else
         {
