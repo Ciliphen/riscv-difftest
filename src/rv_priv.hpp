@@ -421,7 +421,8 @@ public:
                     {
                         if (tohost == 1)
                         {
-                            printf("Test Pass!\n");
+                            printf("\033[32mTest Pass!\n");
+                            printf("\033[0m"); // Reset the text color to default
                             exit(0);
                         }
                         else
@@ -460,7 +461,8 @@ public:
                     {
                         if (tohost == 1)
                         {
-                            printf("Test Pass!\n");
+                            printf("\033[32mTest Pass!\n");
+                            printf("\033[0m"); // Reset the text color to default
                             exit(0);
                         }
                         else
