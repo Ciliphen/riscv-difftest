@@ -67,7 +67,10 @@ $(TRACE_TESTS67): obj_dir/V$(TOP_NAME)
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab6.bin -rvtest -cpu_trace -writeappend; \
 	echo "Total tests run: $$count";
 
-lab9: obj_dir/V$(TOP_NAME)
+TEST9_13 := lab9 lab10 lab11 lab12 lab13
+TRACE_TEST9_13 := $(addprefix trace_,$(TEST9_13))
+
+$(TEST9_13): obj_dir/V$(TOP_NAME)
 	count=0; \
 	for test in $$(find ./test/bin/riscv-test/ \( -name "rv64ui-p-*" -o -name "rv64um-p-*" -o -name "rv64mi-p-*" \) | grep -vE "rv64ui-p-fence_i|rv64mi-p-access"); do \
 		count=$$((count + 1)); \
@@ -76,7 +79,7 @@ lab9: obj_dir/V$(TOP_NAME)
 	done; \
 	echo "Total tests run: $$count";
 
-trace_lab9: obj_dir/V$(TOP_NAME)
+$(TRACE_TEST9_13): obj_dir/V$(TOP_NAME)
 	count=0; \
 	for test in $$(find ./test/bin/riscv-test/ \( -name "rv64ui-p-*" -o -name "rv64um-p-*" -o -name "rv64mi-p-*" \) | grep -vE "rv64ui-p-fence_i|rv64mi-p-access"); do \
 		count=$$((count + 1)); \
