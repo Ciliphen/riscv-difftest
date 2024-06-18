@@ -45,9 +45,9 @@ void assert(bool expr, const char *msg = "")
     }
 }
 
-#include "nscscc_sram.hpp"
-#include "nscscc_sram_slave.hpp"
-#include "nscscc_sram_xbar.hpp"
+#include "axi4.hpp"
+#include "axi4_mem.hpp"
+#include "axi4_xbar.hpp"
 #include "mmio_mem.hpp"
 
 #include <iostream>
@@ -57,21 +57,47 @@ void assert(bool expr, const char *msg = "")
 #include <csignal>
 #include <sstream>
 
-void connect_wire(nscscc_sram_ptr &sram_ptr, Vtop *top)
+void connect_wire(axi4_ptr<32, 64, 4> &mmio_ptr, Vtop *top)
 {
-    sram_ptr.inst_sram_en = &(top->inst_sram_en);
-    sram_ptr.inst_sram_addr = &(top->inst_sram_addr);
-    sram_ptr.inst_sram_wen = &(top->inst_sram_wen);
-    sram_ptr.inst_sram_rdata = &(top->inst_sram_rdata);
-    sram_ptr.inst_sram_wdata = &(top->inst_sram_wdata);
-    sram_ptr.data_sram_en = &(top->data_sram_en);
-    sram_ptr.data_sram_addr = &(top->data_sram_addr);
-    sram_ptr.data_sram_wen = &(top->data_sram_wen);
-    sram_ptr.data_sram_rdata = &(top->data_sram_rdata);
-    sram_ptr.data_sram_wdata = &(top->data_sram_wdata);
+    // connect
+    // mmio
+    // aw
+    mmio_ptr.awaddr = &(top->axi_awaddr);
+    mmio_ptr.awburst = &(top->axi_awburst);
+    mmio_ptr.awid = &(top->axi_awid);
+    mmio_ptr.awlen = &(top->axi_awlen);
+    mmio_ptr.awready = &(top->axi_awready);
+    mmio_ptr.awsize = &(top->axi_awsize);
+    mmio_ptr.awvalid = &(top->axi_awvalid);
+    // w
+    mmio_ptr.wdata = &(top->axi_wdata);
+    mmio_ptr.wlast = &(top->axi_wlast);
+    mmio_ptr.wready = &(top->axi_wready);
+    mmio_ptr.wstrb = &(top->axi_wstrb);
+    mmio_ptr.wvalid = &(top->axi_wvalid);
+    // b
+    mmio_ptr.bid = &(top->axi_bid);
+    mmio_ptr.bready = &(top->axi_bready);
+    mmio_ptr.bresp = &(top->axi_bresp);
+    mmio_ptr.bvalid = &(top->axi_bvalid);
+    // ar
+    mmio_ptr.araddr = &(top->axi_araddr);
+    mmio_ptr.arburst = &(top->axi_arburst);
+    mmio_ptr.arid = &(top->axi_arid);
+    mmio_ptr.arlen = &(top->axi_arlen);
+    mmio_ptr.arready = &(top->axi_arready);
+    mmio_ptr.arsize = &(top->axi_arsize);
+    mmio_ptr.arvalid = &(top->axi_arvalid);
+    // r
+    mmio_ptr.rdata = &(top->axi_rdata);
+    mmio_ptr.rid = &(top->axi_rid);
+    mmio_ptr.rlast = &(top->axi_rlast);
+    mmio_ptr.rready = &(top->axi_rready);
+    mmio_ptr.rresp = &(top->axi_rresp);
+    mmio_ptr.rvalid = &(top->axi_rvalid);
 }
 
-void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test_path)
+void riscv_test_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref, const char *riscv_test_path)
 {
 
     // setup cemu {
@@ -93,9 +119,9 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     // setup cemu }
 
     // setup rtl {
-    nscscc_sram mmio_sigs;
-    nscscc_sram_ref mmio_sigs_ref(mmio_sigs);
-    nscscc_sram_xbar mmio;
+    axi4<32, 64, 4> mmio_sigs;
+    axi4_ref<32, 64, 4> mmio_sigs_ref(mmio_sigs);
+    axi4_xbar<32, 64, 4> mmio;
 
     mmio_mem rtl_mem(128 * 1024 * 1024, riscv_test_path);
     assert(mmio.add_dev(0x80000000, 0x80000000, &rtl_mem));
@@ -186,7 +212,7 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     printf("total_ticks: %lu\n", ticks);
 }
 
-void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test_path)
+void make_cpu_trace(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref, const char *riscv_test_path)
 {
 
     // setup cemu {
@@ -207,9 +233,9 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     // setup cemu }
 
     // setup rtl {
-    nscscc_sram mmio_sigs;
-    nscscc_sram_ref mmio_sigs_ref(mmio_sigs);
-    nscscc_sram_xbar mmio;
+    axi4<32, 64, 4> mmio_sigs;
+    axi4_ref<32, 64, 4> mmio_sigs_ref(mmio_sigs);
+    axi4_xbar<32, 64, 4> mmio;
 
     mmio_mem rtl_mem(128 * 1024 * 1024, riscv_test_path);
 
@@ -433,12 +459,12 @@ int main(int argc, char **argv, char **env)
 
     // setup soc
     Vtop *top = new Vtop;
-    nscscc_sram_ptr mmio_ptr;
+    axi4_ptr<32, 64, 4> mmio_ptr;
 
     connect_wire(mmio_ptr, top);
     assert(mmio_ptr.check());
 
-    nscscc_sram_ref mmio_ref(mmio_ptr);
+    axi4_ref<32, 64, 4> mmio_ref(mmio_ptr);
 
     switch (run_mode)
     {
