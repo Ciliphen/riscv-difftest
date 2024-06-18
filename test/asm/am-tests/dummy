@@ -1,0 +1,25 @@
+
+elf/am-tests/dummy:     file format elf64-littleriscv
+
+
+Disassembly of section .text:
+
+0000000080000000 <_start>:
+    80000000:	00000413          	addi	x8,x0,0
+    80000004:	00009117          	auipc	x2,0x9
+    80000008:	ffc10113          	addi	x2,x2,-4 # 80009000 <_end>
+    8000000c:	00c000ef          	jal	x1,80000018 <_trm_init>
+
+0000000080000010 <main>:
+    80000010:	00000513          	addi	x10,x0,0
+    80000014:	00008067          	jalr	x0,0(x1)
+
+0000000080000018 <_trm_init>:
+    80000018:	ff010113          	addi	x2,x2,-16
+    8000001c:	00000517          	auipc	x10,0x0
+    80000020:	01c50513          	addi	x10,x10,28 # 80000038 <_etext>
+    80000024:	00113423          	sd	x1,8(x2)
+    80000028:	fe9ff0ef          	jal	x1,80000010 <main>
+    8000002c:	00050513          	addi	x10,x10,0
+    80000030:	00100073          	ebreak
+    80000034:	0000006f          	jal	x0,80000034 <_trm_init+0x1c>

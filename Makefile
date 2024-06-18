@@ -57,5 +57,17 @@ $(TESTS): %: obj_dir/V$(TOP_NAME)
 $(TRACE_TESTS): trace_%: obj_dir/V$(TOP_NAME)
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/$*.bin -rvtest -cpu_trace
 
-lab5: obj_dir/V$(TOP_NAME)
-	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab1.bin -rvtest -trace 10000000 -pc
+lab6: obj_dir/V$(TOP_NAME)
+	count=0; \
+	for test in ./test/bin/am-tests/*; do \
+		count=$$((count + 1)); \
+		echo "Running test $$count: $$test"; \
+		./obj_dir/V$(TOP_NAME) $$test -rvtest -pc; \
+	done; \
+	echo "Total tests run: $$count";
+
+
+# mv:
+# 	dir="./test/asm/riscv-test/isa/rv64ssvnapot-p-"; \
+# 	mkdir -p "$$dir"; \
+# 	find ./test/asm/riscv-test/isa/ -type f -name "rv64ssvnapot-p-*" -exec git mv {} "$$dir" \;

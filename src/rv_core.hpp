@@ -127,7 +127,7 @@ private:
         rv_instr *inst = (rv_instr *)&cur_instr;
         rv_exc_code if_exc;
     instr_fetch:
-        
+
         if (!difftest_mode)
             priv.pre_exec(meip, msip, mtip, seip);
         else if (int_allow)
@@ -687,7 +687,7 @@ private:
                             {
                             case 0:
                             { // ECALL
-                                if (run_riscv_test && GPR[17] == 93)
+                                if (run_riscv_test && GPR[3] == 1)
                                 {
                                     if (GPR[17] == 93)
                                     {
@@ -715,6 +715,11 @@ private:
                                 break;
                             }
                             case 1: // EBREAK
+                                if (run_riscv_test && GPR[10] == 0)
+                                {
+                                    printf("Test Pass!\n");
+                                    exit(0);
+                                }
                                 priv.ebreak();
                                 break;
                             default:
