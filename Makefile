@@ -13,31 +13,10 @@ verilog:
 	$(MAKE) -C $(CHISEL_DIR) verilog
 	cp $(CHISEL_DIR)/build/PuaCpu.v $(SRC_DIR)
 
-no_trace: obj_dir/V$(TOP_NAME)
-	./obj_dir/V$(TOP_NAME) -os -pc -printpc 
-
-no_diff: obj_dir/V$(TOP_NAME)
-	./obj_dir/V$(TOP_NAME) -os -pc -printpc -nodiff
-
-func: obj_dir/V$(TOP_NAME)
-	./obj_dir/V$(TOP_NAME) ./test/bin/riscv-test/rv64mi-p-csr.bin -rvtest -trace 10000000 -pc #-delay
-	# ./test/run_riscv_test.py
-
 test: obj_dir/V$(TOP_NAME)
 	$(MAKE) -C ./test/lab_test/lab6 test
 	# ./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -golden_trace # -initgprs # lab1记得初始化寄存器堆
-	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -perf #-trace 10000000 -pc # -initgprs # lab1记得初始化寄存器堆
-
-perf: obj_dir/V$(TOP_NAME)
-	./obj_dir/V$(TOP_NAME) ./test/bin/riscv-test/dhrystone.riscv.bin -rvtest -perf
-
-# 生成My的trace
-trace: obj_dir/V$(TOP_NAME)
-	./obj_dir/V$(TOP_NAME) ./test/bin/riscv-test/rv64ui-p-lui.bin -rvtest -cpu_trace
-
-# 生成RV模拟器的标准trace
-golden_trace: obj_dir/V$(TOP_NAME)
-	./obj_dir/V$(TOP_NAME) ./test/bin/riscv-test/rv64ui-p-lui.bin -rvtest -golden_trace
+	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -perf # -trace 10000000 -pc # -initgprs # lab1记得初始化寄存器堆
 
 clean:
 	rm -rf obj_dir
@@ -83,6 +62,24 @@ $(TRACE_TESTS67): obj_dir/V$(TOP_NAME)
 	count=$$((count + 1)); \
 	echo "Running test $$count: ./test/bin/lab-test/lab6.bin"; \
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab6.bin -rvtest -cpu_trace -writeappend; \
+	echo "Total tests run: $$count";
+
+lab9: obj_dir/V$(TOP_NAME)
+	count=0; \
+	for test in $$(find ./test/bin/riscv-test/ \( -name "rv64ui-p-*" -o -name "rv64um-p-*" -o -name "rv64mi-p-*" \) | grep -vE "rv64ui-p-fence_i|rv64mi-p-access"); do \
+		count=$$((count + 1)); \
+		echo "Running test $$count: $$test"; \
+		./obj_dir/V$(TOP_NAME) $$test -rvtest -pc; \
+	done; \
+	echo "Total tests run: $$count";
+
+trace_lab9: obj_dir/V$(TOP_NAME)
+	count=0; \
+	for test in $$(find ./test/bin/riscv-test/ \( -name "rv64ui-p-*" -o -name "rv64um-p-*" -o -name "rv64mi-p-*" \) | grep -vE "rv64ui-p-fence_i|rv64mi-p-access"); do \
+		count=$$((count + 1)); \
+		echo "Running test $$count: $$test"; \
+		./obj_dir/V$(TOP_NAME) $$test -rvtest -cpu_trace -writeappend; \
+	done; \
 	echo "Total tests run: $$count";
 
 # mv:
