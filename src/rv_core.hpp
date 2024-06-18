@@ -10,16 +10,7 @@
 #include <queue>
 
 extern bool run_riscv_test;
-extern long long icache_req;
-extern long long dcache_req;
-extern long long icache_hit;
-extern long long dcache_hit;
-extern long long bru_pred_branch;
-extern long long bru_pred_fail;
-extern long long bru_pred_fail;
-extern long long dual_issue_cnt;
-extern long long commit_cnt;
-extern long long clock_cnt;
+extern bool run_os;
 
 enum alu_op
 {
@@ -55,6 +46,9 @@ public:
     uint64_t debug_reg_num;
     uint64_t debug_reg_wdata;
     uint32_t debug_inst;
+    uint64_t debug_phy_pc;
+    bool debug_is_mcycle;
+    bool debug_is_minstret;
     bool int_allow;
     bool difftest_mode = false;
     rv_core(rv_systembus &systembus, uint8_t hart_id = 0) : systembus(systembus), priv(hart_id, pc, systembus)
@@ -82,6 +76,11 @@ public:
     {
         return pc;
     }
+    void dump_gpr()
+    {
+        for (int i = 0; i < 32; i++)
+            printf("x%-2d: %016lx\n", i, GPR[i]);
+    }
     void dump_pc_history()
     {
         printf("----- PC INST HISTORY BEGIN-----\n");
@@ -89,9 +88,11 @@ public:
         {
             uint64_t pc_history = trace.front();
             uint64_t inst_history = inst_trace.front();
+            uint64_t phy_pc_history = phy_pc_trace.front();
             trace.pop();
             inst_trace.pop();
-            printf("pc: %016lx inst: %016lx\n", pc_history, inst_history);
+            phy_pc_trace.pop();
+            printf("pc: %016lx phy_pc: %016lx inst: %016lx\n", pc_history, phy_pc_history, inst_history);
         }
         printf("----- PC INST HISTORY  END  -----\n");
     }
@@ -99,9 +100,9 @@ public:
     {
         difftest_mode = value;
     }
-    void import_diff_test_info(uint64_t mcycle, uint64_t minstret, uint64_t mip, bool interrupt_on)
+    void import_diff_test_info(uint64_t mip, bool interrupt_on)
     {
-        priv.difftest_preexec(mcycle, minstret, mip, interrupt_on);
+        priv.difftest_preexec(mip, interrupt_on);
         int_allow = interrupt_on;
     }
 
@@ -109,6 +110,7 @@ private:
     uint32_t trace_size = 32;
     std::queue<uint64_t> trace;
     std::queue<uint64_t> inst_trace;
+    std::queue<uint64_t> phy_pc_trace;
     rv_systembus &systembus;
     uint64_t pc = 0;
     rv_priv priv;
@@ -118,17 +120,10 @@ private:
         debug_pc = pc;
         debug_reg_num = 0;
         debug_reg_wdata = 0;
+        debug_is_mcycle = false;
+        debug_is_minstret = false;
         if (run_riscv_test && priv.get_cycle() >= 1e6) // 默认是1e6
         {
-            if (perf_count)
-            {
-                printf("icache hit rate: %.2lf\n", 1.0 * icache_hit / icache_req * 100);
-                printf("dcache hit rate: %.2lf\n", 1.0 * dcache_hit / dcache_req * 100);
-                printf("branch predication accuracy: %.2lf\n", (1 - 1.0 * bru_pred_fail / bru_pred_branch) * 100);
-                printf("dual issue rate: %.2lf\n", 1.0 * dual_issue_cnt / commit_cnt * 100);
-                printf("IPC: %.2lf\n", 1.0 * commit_cnt / clock_cnt);
-            }
-
             printf("Test timeout! at pc 0x%lx\n", pc);
             exit(1);
         }
@@ -159,11 +154,16 @@ private:
             goto exception;
         }
         if_exc = priv.va_if(pc, 4, (uint8_t *)&cur_instr, pc_bad_va);
+        debug_phy_pc = priv.physical_pc;
         if (trace_size)
         {
             inst_trace.push(cur_instr);
             while (inst_trace.size() > trace_size)
                 inst_trace.pop();
+
+            phy_pc_trace.push(debug_phy_pc);
+            while (phy_pc_trace.size() > trace_size)
+                phy_pc_trace.pop();
         }
         if (if_exc != exc_custom_ok)
         {
@@ -305,6 +305,10 @@ private:
                 case FUNCT3_LD:
                 {
                     int64_t buf;
+                    if (mem_addr == 0x200bff8 && run_os)
+                    {
+                        debug_is_mcycle = true;
+                    }
                     bool ok = mem_read(mem_addr, 8, (unsigned char *)&buf);
                     if (ok)
                         set_GPR(inst->i_type.rd, buf);
@@ -713,15 +717,6 @@ private:
                                         if (GPR[10] == 0)
                                         {
                                             printf("Test Pass!\n");
-                                            if (perf_count)
-                                            {
-                                                printf("icache hit rate: %.2lf\n", 1.0 * icache_hit / icache_req * 100);
-                                                printf("dcache hit rate: %.2lf\n", 1.0 * dcache_hit / dcache_req * 100);
-                                                printf("branch predication accuracy: %.2lf\n", (1 - 1.0 * bru_pred_fail / bru_pred_branch) * 100);
-                                                printf("dual issue rate: %.2lf\n", 1.0 * dual_issue_cnt / commit_cnt * 100);
-                                                printf("IPC: %.2lf\n", 1.0 * commit_cnt / priv.get_cycle());
-                                            }
-
                                             exit(0);
                                         }
                                         else
@@ -799,7 +794,14 @@ private:
                     if (!ri)
                         ri = !priv.csr_write(csr_index, GPR[inst->i_type.rs1]);
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 case FUNCT3_CSRRS:
@@ -812,7 +814,14 @@ private:
                     if (!ri && inst->i_type.rs1)
                         ri = !priv.csr_write(csr_index, csr_result | GPR[inst->i_type.rs1]);
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 case FUNCT3_CSRRC:
@@ -825,7 +834,14 @@ private:
                     if (!ri && inst->i_type.rs1)
                         ri = !priv.csr_write(csr_index, csr_result & (~GPR[inst->i_type.rs1]));
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 case FUNCT3_CSRRWI:
@@ -838,7 +854,14 @@ private:
                     if (!ri)
                         ri = !priv.csr_write(csr_index, inst->i_type.rs1);
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 case FUNCT3_CSRRSI:
@@ -851,7 +874,14 @@ private:
                     if (!ri && inst->i_type.rs1)
                         ri = !priv.csr_write(csr_index, csr_result | inst->i_type.rs1);
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 case FUNCT3_CSRRCI:
@@ -864,7 +894,14 @@ private:
                     if (!ri && inst->i_type.rs1)
                         ri = !priv.csr_write(csr_index, csr_result & (~(inst->i_type.rs1)));
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 default:

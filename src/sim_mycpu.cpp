@@ -1,7 +1,7 @@
 #include "verilated.h"
 // #include "verilated_fst_c.h"
 #include "verilated_fst_c.h"
-#include "Vtop_axi_wrapper.h"
+#include "Vtop.h"
 #include "rv_systembus.hpp"
 #include "rv_core.hpp"
 #include "rv_clint.hpp"
@@ -10,28 +10,19 @@
 
 bool running = true;
 bool run_riscv_test = false;
+bool run_os = false;
 bool dump_pc_history = false;
 bool print_pc = false;
 bool should_delay = false;
 bool dual_issue = true;
 bool output_trace = false;
 bool difftest = true;
-bool perf_count = false;
+bool perf_counter = false;
 const uint64_t commit_timeout = 3000;
 const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
 std::atomic_bool trace_on = false;
 long sim_time = 1e8;
-long long icache_req = 0;
-long long dcache_req = 0;
-long long icache_hit = 0;
-long long dcache_hit = 0;
-long long bru_pred_branch = 0;
-long long bru_pred_fail = 0;
-long long dual_issue_cnt = 0;
-long long commit_cnt = 0;
-long long clock_cnt = 0;
-
 long long current_pc;
 
 VerilatedFstC fst;
@@ -66,44 +57,44 @@ void assert(bool expr, const char *msg = "")
 #include <csignal>
 #include <sstream>
 
-void connect_wire(axi4_ptr<32, 64, 4> &mmio_ptr, Vtop_axi_wrapper *top)
+void connect_wire(axi4_ptr<32, 64, 4> &mmio_ptr, Vtop *top)
 {
     // connect
     // mmio
     // aw
-    mmio_ptr.awaddr = &(top->MAXI_awaddr);
-    mmio_ptr.awburst = &(top->MAXI_awburst);
-    mmio_ptr.awid = &(top->MAXI_awid);
-    mmio_ptr.awlen = &(top->MAXI_awlen);
-    mmio_ptr.awready = &(top->MAXI_awready);
-    mmio_ptr.awsize = &(top->MAXI_awsize);
-    mmio_ptr.awvalid = &(top->MAXI_awvalid);
+    mmio_ptr.awaddr = &(top->axi_awaddr);
+    mmio_ptr.awburst = &(top->axi_awburst);
+    mmio_ptr.awid = &(top->axi_awid);
+    mmio_ptr.awlen = &(top->axi_awlen);
+    mmio_ptr.awready = &(top->axi_awready);
+    mmio_ptr.awsize = &(top->axi_awsize);
+    mmio_ptr.awvalid = &(top->axi_awvalid);
     // w
-    mmio_ptr.wdata = &(top->MAXI_wdata);
-    mmio_ptr.wlast = &(top->MAXI_wlast);
-    mmio_ptr.wready = &(top->MAXI_wready);
-    mmio_ptr.wstrb = &(top->MAXI_wstrb);
-    mmio_ptr.wvalid = &(top->MAXI_wvalid);
+    mmio_ptr.wdata = &(top->axi_wdata);
+    mmio_ptr.wlast = &(top->axi_wlast);
+    mmio_ptr.wready = &(top->axi_wready);
+    mmio_ptr.wstrb = &(top->axi_wstrb);
+    mmio_ptr.wvalid = &(top->axi_wvalid);
     // b
-    mmio_ptr.bid = &(top->MAXI_bid);
-    mmio_ptr.bready = &(top->MAXI_bready);
-    mmio_ptr.bresp = &(top->MAXI_bresp);
-    mmio_ptr.bvalid = &(top->MAXI_bvalid);
+    mmio_ptr.bid = &(top->axi_bid);
+    mmio_ptr.bready = &(top->axi_bready);
+    mmio_ptr.bresp = &(top->axi_bresp);
+    mmio_ptr.bvalid = &(top->axi_bvalid);
     // ar
-    mmio_ptr.araddr = &(top->MAXI_araddr);
-    mmio_ptr.arburst = &(top->MAXI_arburst);
-    mmio_ptr.arid = &(top->MAXI_arid);
-    mmio_ptr.arlen = &(top->MAXI_arlen);
-    mmio_ptr.arready = &(top->MAXI_arready);
-    mmio_ptr.arsize = &(top->MAXI_arsize);
-    mmio_ptr.arvalid = &(top->MAXI_arvalid);
+    mmio_ptr.araddr = &(top->axi_araddr);
+    mmio_ptr.arburst = &(top->axi_arburst);
+    mmio_ptr.arid = &(top->axi_arid);
+    mmio_ptr.arlen = &(top->axi_arlen);
+    mmio_ptr.arready = &(top->axi_arready);
+    mmio_ptr.arsize = &(top->axi_arsize);
+    mmio_ptr.arvalid = &(top->axi_arvalid);
     // r
-    mmio_ptr.rdata = &(top->MAXI_rdata);
-    mmio_ptr.rid = &(top->MAXI_rid);
-    mmio_ptr.rlast = &(top->MAXI_rlast);
-    mmio_ptr.rready = &(top->MAXI_rready);
-    mmio_ptr.rresp = &(top->MAXI_rresp);
-    mmio_ptr.rvalid = &(top->MAXI_rvalid);
+    mmio_ptr.rdata = &(top->axi_rdata);
+    mmio_ptr.rid = &(top->axi_rid);
+    mmio_ptr.rlast = &(top->axi_rlast);
+    mmio_ptr.rready = &(top->axi_rready);
+    mmio_ptr.rresp = &(top->axi_rresp);
+    mmio_ptr.rvalid = &(top->axi_rvalid);
 }
 
 void uart_input(uartlite &uart)
@@ -121,7 +112,7 @@ void uart_input(uartlite &uart)
     }
 }
 
-void workbench_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
+void workbench_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
 {
     axi4<32, 64, 4> mmio_sigs;
     axi4_ref<32, 64, 4> mmio_sigs_ref(mmio_sigs);
@@ -244,10 +235,9 @@ void workbench_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     printf("total_ticks: %lu\n", ticks);
 }
 
-void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
+void os_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
 {
     const char *payload_load_path = "./test/bin/os/fw_payload.bin";
-    const bool use_payload = true;
 
     // setup cemu {
     rv_systembus cemu_system_bus;
@@ -300,23 +290,10 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         plic.update_ext(1, uart.irq());
         cemu_clint.tick();
         cemu_plic.update_ext(1, cemu_uart.irq());
-        top->MEI = plic.get_int(0);
-        top->MSI = clint.m_s_irq(0);
-        top->MTI = clint.m_t_irq(0);
-        top->SEI = plic.get_int(1);
-        // if (cemu_plic.get_int(0) != plic.get_int(0) || cemu_clint.m_s_irq(0) != clint.m_s_irq(0) || cemu_clint.m_t_irq(0) != clint.m_t_irq(0) || cemu_plic.get_int(1) != plic.get_int(1))
-        // {
-        //     printf("cemu_int\n");
-        //     printf("cemu_plic.get_int(0) = %d\n", cemu_plic.get_int(0));
-        //     printf("cemu_clint.m_s_irq(0) = %d\n", cemu_clint.m_s_irq(0));
-        //     printf("cemu_clint.m_t_irq(0) = %d\n", cemu_clint.m_t_irq(0));
-        //     printf("cemu_plic.get_int(1) = %d\n", cemu_plic.get_int(1));
-        //     printf("rtl_int\n");
-        //     printf("plic.get_int(0) = %d\n", plic.get_int(0));
-        //     printf("clint.m_s_irq(0) = %d\n", clint.m_s_irq(0));
-        //     printf("clint.m_t_irq(0) = %d\n", clint.m_t_irq(0));
-        //     printf("plic.get_int(1) = %d\n", plic.get_int(1));
-        // }
+        top->mei = plic.get_int(0);
+        top->msi = clint.m_s_irq(0);
+        top->mti = clint.m_t_irq(0);
+        top->sei = plic.get_int(1);
         if (rst_ticks > 0)
         {
             top->reset = 1;
@@ -341,7 +318,7 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
         }
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
-            cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_minstret, top->debug_csr_mip, top->debug_csr_interrupt);
+            cemu_rvcore.import_diff_test_info(top->debug_csr_mip, top->debug_csr_interrupt);
             cemu_rvcore.step(0, 0, 0, 0);
             // cemu_rvcore.step(cemu_plic.get_int(0), cemu_clint.m_s_irq(0), cemu_clint.m_t_irq(0), cemu_plic.get_int(1));
             last_commit = ticks;
@@ -349,19 +326,15 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
             if (pc_cnt++ >= print_pc_cycle && print_pc)
             {
                 printf("PC = 0x%016lx, ", cemu_rvcore.debug_pc);
+                printf("PhyPC = 0x%016lx, ", cemu_rvcore.debug_phy_pc);
                 printf("INST = 0x%08x\n", cemu_rvcore.debug_inst);
                 pc_cnt = 0;
-            }
-            bool special_pc = cemu_rvcore.debug_pc == 0x80021ec0;
-            if (special_pc)
-            {
-                cemu_rvcore.set_GPR(top->debug_rf_wnum, top->debug_rf_wdata);
             }
             if (difftest &&
                 (top->debug_pc != cemu_rvcore.debug_pc ||
                  cemu_rvcore.debug_reg_num != 0 &&
                      (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
-                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)))
+                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata && !(cemu_rvcore.debug_is_mcycle || cemu_rvcore.debug_is_minstret))))
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("ticks: %ld\n", ticks);
@@ -369,7 +342,17 @@ void os_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_rf_wnum, top->debug_rf_wdata);
                 running = false;
                 if (dump_pc_history)
+                {
                     cemu_rvcore.dump_pc_history();
+                    cemu_rvcore.dump_gpr();
+                }
+            }
+            else
+            {
+                if (cemu_rvcore.debug_is_mcycle || cemu_rvcore.debug_is_minstret)
+                {
+                    cemu_rvcore.set_GPR(cemu_rvcore.debug_reg_num, top->debug_rf_wdata);
+                }
             }
         }
         if (trace_on)
@@ -427,11 +410,12 @@ void os_cemu_run()
         plic.update_ext(1, uart.irq());
         rv.step(plic.get_int(0), clint.m_s_irq(0), clint.m_t_irq(0), plic.get_int(1));
         if (pc_cnt++ >= print_pc_cycle && print_pc)
-            {
-                printf("PC = 0x%016lx, ", rv.debug_pc);
-                printf("INST = 0x%08x\n", rv.debug_inst);
-                pc_cnt = 0;
-            }
+        {
+            printf("PC = 0x%016lx, ", rv.debug_pc);
+            printf("PhyPC = 0x%016lx, ", rv.debug_phy_pc);
+            printf("INST = 0x%08x\n", rv.debug_inst);
+            pc_cnt = 0;
+        }
         while (uart.exist_tx())
         {
             char c = uart.getc();
@@ -442,7 +426,7 @@ void os_cemu_run()
     }
 }
 
-void os_nodiff_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
+void os_nodiff_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
 {
     const char *payload_load_path = "./test/bin/os/fw_payload.bin";
 
@@ -472,10 +456,10 @@ void os_nodiff_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     {
         clint.tick();
         plic.update_ext(1, uart.irq());
-        top->MEI = plic.get_int(0);
-        top->MSI = clint.m_s_irq(0);
-        top->MTI = clint.m_t_irq(0);
-        top->SEI = plic.get_int(1);
+        top->mei = plic.get_int(0);
+        top->msi = clint.m_s_irq(0);
+        top->mti = clint.m_t_irq(0);
+        top->sei = plic.get_int(1);
         if (rst_ticks > 0)
         {
             top->reset = 1;
@@ -507,7 +491,7 @@ void os_nodiff_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref)
     }
 }
 
-void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const char *riscv_test_path)
+void riscv_test_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref, const char *riscv_test_path)
 {
 
     // setup cemu {
@@ -560,20 +544,10 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
             mmio.beat(mmio_sigs_ref);
             mmio_sigs.update_output(mmio_ref);
             top->eval();
-            icache_req += top->debug_perf_icache_req;
-            dcache_req += top->debug_perf_dcache_req;
-            icache_hit += top->debug_perf_icache_hit;
-            dcache_hit += top->debug_perf_dcache_hit;
-            bru_pred_branch += top->debug_perf_bru_pred_branch;
-            bru_pred_fail += top->debug_perf_bru_pred_fail;
-            clock_cnt++;
         }
-        commit_cnt += top->debug_commit;
-        if (!top->clock && !top->reset)
-            dual_issue_cnt += top->debug_commit;
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
-            cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_minstret, top->debug_csr_mip, top->debug_csr_interrupt);
+            cemu_rvcore.import_diff_test_info(top->debug_csr_mip, top->debug_csr_interrupt);
             cemu_rvcore.step(0, 0, 0, 0);
             last_commit = ticks;
             if (pc_cnt++ >= print_pc_cycle && print_pc)
@@ -584,7 +558,7 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
             if ((top->debug_pc != cemu_rvcore.debug_pc ||
                  cemu_rvcore.debug_reg_num != 0 &&
                      (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
-                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)))
+                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata && !(cemu_rvcore.debug_is_mcycle || cemu_rvcore.debug_is_minstret))))
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
@@ -599,6 +573,13 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
                     cemu_rvcore.dump_pc_history();
                 else if (delay-- == 0)
                     running = false;
+            }
+            else
+            {
+                if (cemu_rvcore.debug_is_mcycle || cemu_rvcore.debug_is_minstret)
+                {
+                    cemu_rvcore.set_GPR(cemu_rvcore.debug_reg_num, top->debug_rf_wdata);
+                }
             }
         }
         if (trace_on)
@@ -620,154 +601,6 @@ void riscv_test_run(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const 
     printf("total_ticks: %lu\n", ticks);
 }
 
-void make_cpu_trace(Vtop_axi_wrapper *top, axi4_ref<32, 64, 4> &mmio_ref, const char *riscv_test_path)
-{
-
-    // setup cemu {
-    rv_systembus cemu_system_bus;
-    mmio_mem cemu_mem(128 * 1024 * 1024, riscv_test_path);
-
-    assert(cemu_system_bus.add_dev(0x80000000, 128 * 1024 * 1024, &cemu_mem));
-
-    rv_core cemu_rvcore(cemu_system_bus);
-    cemu_rvcore.jump(0x80000000);
-    // setup cemu }
-
-    // setup rtl {
-    axi4<32, 64, 4> mmio_sigs;
-    axi4_ref<32, 64, 4> mmio_sigs_ref(mmio_sigs);
-    axi4_xbar<32, 64, 4> mmio;
-
-    mmio_mem rtl_mem(128 * 1024 * 1024, riscv_test_path);
-
-    assert(mmio.add_dev(0x80000000, 128 * 1024 * 1024, &rtl_mem));
-    // setup rtl }
-
-    // connect Vcd for trace
-    if (trace_on)
-    {
-        top->trace(&fst, 0);
-        fst.open("trace.fst");
-    }
-
-    FILE *trace_file;
-    trace_file = fopen("trace.txt", "w");
-    if (trace_file == NULL)
-    {
-        printf("Error opening file!\n");
-    }
-
-    uint64_t rst_ticks = 10;
-    uint64_t ticks = 0;
-    uint64_t last_commit = ticks;
-    int delay = 10;
-    while (!Verilated::gotFinish() && sim_time > 0 && running)
-    {
-        if (rst_ticks > 0)
-        {
-            top->reset = 1;
-            rst_ticks--;
-        }
-        else
-            top->reset = 0;
-        top->clock = !top->clock;
-        if (top->clock && !top->reset)
-            mmio_sigs.update_input(mmio_ref);
-        top->eval();
-        if (top->clock && !top->reset)
-        {
-            mmio.beat(mmio_sigs_ref);
-            mmio_sigs.update_output(mmio_ref);
-            top->eval();
-        }
-        if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
-        { // instr retire
-            cemu_rvcore.step(0, 0, 0, 0);
-            last_commit = ticks;
-            if ((top->debug_pc != cemu_rvcore.debug_pc ||
-                 cemu_rvcore.debug_reg_num != 0 &&
-                     (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
-                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)) &&
-                running)
-            {
-                printf("\033[1;31mError!\033[0m\n");
-                printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
-                printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_rf_wnum, top->debug_rf_wdata);
-                if (!should_delay)
-                {
-                    running = false;
-                    if (dump_pc_history)
-                        cemu_rvcore.dump_pc_history();
-                }
-                else if (dump_pc_history && delay-- == 10)
-                    cemu_rvcore.dump_pc_history();
-                else if (delay-- == 0)
-                    running = false;
-            }
-            fprintf(trace_file, "1 %016lx %02lx %016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
-        }
-        if (trace_on)
-        {
-            fst.dump(ticks);
-            sim_time--;
-        }
-        ticks++;
-        if (ticks - last_commit >= commit_timeout)
-        {
-            printf("\033[1;31mError!\033[0m\n");
-            printf("CPU stuck for %ld cycles!\n", commit_timeout / 2);
-            running = false;
-            if (dump_pc_history)
-                cemu_rvcore.dump_pc_history();
-        }
-    }
-    printf("total_ticks: %lu\n", ticks);
-    fclose(trace_file);
-}
-
-void make_golden_trace(const char *riscv_test_path)
-{
-
-    // setup cemu {
-    rv_systembus cemu_system_bus;
-    mmio_mem cemu_mem(128 * 1024 * 1024, riscv_test_path);
-
-    assert(cemu_system_bus.add_dev(0x80000000, 128 * 1024 * 1024, &cemu_mem));
-
-    rv_core cemu_rvcore(cemu_system_bus);
-    cemu_rvcore.jump(0x80000000);
-    // setup cemu }
-
-    FILE *golden_trace_file;
-    golden_trace_file = fopen("golden_trace.txt", "w");
-    if (golden_trace_file == NULL)
-    {
-        printf("Error opening file!\n");
-    }
-
-    uint64_t ticks = 0;
-    uint64_t last_commit = ticks;
-    int delay = 10;
-    while (running)
-    {
-        // instr retire
-        cemu_rvcore.step(0, 0, 0, 0);
-        fprintf(golden_trace_file, "1 %016lx %02lx %016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
-        last_commit = ticks;
-
-        ticks++;
-        if (ticks - last_commit >= commit_timeout)
-        {
-            printf("\033[1;31mError!\033[0m\n");
-            printf("CPU stuck for %ld cycles!\n", commit_timeout / 2);
-            running = false;
-            if (dump_pc_history)
-                cemu_rvcore.dump_pc_history();
-        }
-    }
-    printf("total_ticks: %lu\n", ticks);
-    fclose(golden_trace_file);
-}
 int main(int argc, char **argv, char **env)
 {
     Verilated::commandArgs(argc, argv);
@@ -789,7 +622,7 @@ int main(int argc, char **argv, char **env)
 
     for (int i = 1; i < argc; i++)
     {
-        if (strcmp(argv[i], "-trace") == 0)
+        if (strcmp(argv[i], "-trace") == 0) // 打开trace
         {
             trace_on = true;
             if (i + 1 < argc)
@@ -797,7 +630,7 @@ int main(int argc, char **argv, char **env)
                 sscanf(argv[++i], "%lu", &sim_time);
             }
         }
-        else if (strcmp(argv[i], "-starttrace") == 0)
+        else if (strcmp(argv[i], "-starttrace") == 0) // 开始trace的时间
         {
             if (i + 1 < argc)
             {
@@ -805,18 +638,23 @@ int main(int argc, char **argv, char **env)
             }
             printf("trace start time: %lu\n", trace_start_time);
         }
-        else if (strcmp(argv[i], "-rvtest") == 0)
+        else if (strcmp(argv[i], "-rvtest") == 0) // 运行RISCV测试
         {
             run_riscv_test = true;
             run_mode = RISCV_TEST;
         }
-        else if (strcmp(argv[i], "-perf") == 0)
+        else if (strcmp(argv[i], "-perf") == 0) // 启动性能计数器
         {
-            perf_count = true;
+            perf_counter = true;
         }
-        else if (strcmp(argv[i], "-os") == 0)
+        else if (strcmp(argv[i], "-os") == 0) // 运行OS测试
         {
+            run_os = true;
             run_mode = OS_RUN;
+        }
+        else if (strcmp(argv[i], "-emu") == 0)
+        {
+            run_mode = CEMU_RUM;
         }
         else if (strcmp(argv[i], "-pc") == 0) // 打印历史PC
         {
@@ -830,23 +668,9 @@ int main(int argc, char **argv, char **env)
         {
             should_delay = true;
         }
-        else if (strcmp(argv[i], "-cpu_trace") == 0) // 生成golden trace
-        {
-            run_mode = CPU_TRACE;
-            output_trace = true;
-        }
-        else if (strcmp(argv[i], "-golden_trace") == 0) // 生成golden trace
-        {
-            run_mode = GOLDEN_TRACE;
-            output_trace = true;
-        }
         else if (strcmp(argv[i], "-nodiff") == 0) // 不进行diff测试
         {
             difftest = false;
-        }
-        else if (strcmp(argv[i], "-emu") == 0)
-        {
-            run_mode = CEMU_RUM;
         }
         else
         {
@@ -857,7 +681,7 @@ int main(int argc, char **argv, char **env)
     Verilated::traceEverOn(true);
 
     // setup soc
-    Vtop_axi_wrapper *top = new Vtop_axi_wrapper;
+    Vtop *top = new Vtop;
     axi4_ptr<32, 64, 4> mmio_ptr;
 
     connect_wire(mmio_ptr, top);
@@ -872,12 +696,6 @@ int main(int argc, char **argv, char **env)
         break;
     case RISCV_TEST:
         riscv_test_run(top, mmio_ref, file_load_path);
-        break;
-    case CPU_TRACE:
-        make_cpu_trace(top, mmio_ref, file_load_path);
-        break;
-    case GOLDEN_TRACE:
-        make_golden_trace(file_load_path);
         break;
     case OS_RUN:
         if (difftest)

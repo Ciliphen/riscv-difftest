@@ -1,4 +1,4 @@
-TOP_NAME := top_axi_wrapper
+TOP_NAME := top
 SRC_DIR  := ./core
 SRC_FILE := $(shell find $(SRC_DIR) -name '*.svh') $(shell find $(SRC_DIR) -name '*.v') $(shell find $(SRC_DIR) -name '*.sv')
 CHISEL_DIR = ../chisel
@@ -13,33 +13,19 @@ verilog:
 	$(MAKE) -C $(CHISEL_DIR) verilog
 	cp $(CHISEL_DIR)/build/PuaCpu.v $(SRC_DIR)
 
-no_trace: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper -os -pc -printpc 
-
-no_diff: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper -os -pc -printpc -nodiff
-
 func: obj_dir/V$(TOP_NAME)
-	# ./obj_dir/Vtop_axi_wrapper ./test/bin/riscv-test/rv64ui-p-lui.bin -rvtest -trace 100000 -pc #-delay
-	# ./obj_dir/Vtop_axi_wrapper ./test/bin/riscv-test/mm.riscv.bin -rvtest #-trace 10000000 -pc #-delay
-	# ./obj_dir/Vtop_axi_wrapper -os -pc -printpc # -starttrace 184530000 #-nodiff 
-	# ./obj_dir/Vtop_axi_wrapper -os -pc -printpc
-	# ./obj_dir/Vtop_axi_wrapper -trace 100000 -pc
+	# ./obj_dir/Vtop ./test/bin/riscv-test/rv64ui-p-lui.bin -rvtest -trace 100000 -pc #-delay
+	# ./obj_dir/Vtop ./test/bin/riscv-test/mm.riscv.bin -rvtest #-trace 10000000 -pc #-delay
+	# ./obj_dir/Vtop -os -pc -printpc # -starttrace 184530000 #-nodiff 
+	# ./obj_dir/Vtop -os -pc -printpc
+	# ./obj_dir/Vtop -trace 100000 -pc
 	./test/run_riscv_test.py
 
 os: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper -os -pc -emu -printpc
+	./obj_dir/Vtop -os -pc -printpc
 
 perf: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper ./test/bin/riscv-test/dhrystone.riscv.bin -rvtest -perf
-
-# 生成My的trace
-trace: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper ./test/bin/riscv-test/rv64ui-p-lui.bin -rvtest -cpu_trace
-
-# 生成RV模拟器的标准trace
-golden_trace: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop_axi_wrapper ./test/bin/riscv-test/rv64ui-p-lui.bin -rvtest -golden_trace
+	./obj_dir/Vtop ./test/bin/riscv-test/dhrystone.riscv.bin -rvtest -perf
 
 clean:
 	rm -rf obj_dir
