@@ -48,6 +48,8 @@ public:
     uint64_t debug_reg_num;
     uint64_t debug_reg_wdata;
     uint32_t debug_inst;
+    bool debug_is_mcycle;
+    bool debug_is_minstret;
     bool int_allow;
     bool difftest_mode = false;
     rv_core(rv_systembus &systembus, uint8_t hart_id = 0) : systembus(systembus), priv(hart_id, pc, systembus)
@@ -111,7 +113,9 @@ private:
         debug_pc = pc;
         debug_reg_num = 0;
         debug_reg_wdata = 0;
-        if (run_riscv_test && priv.get_cycle() >= 1e6) // 默认是1e6
+        debug_is_mcycle = false;
+        debug_is_minstret = false;
+        if (run_riscv_test && priv.get_cycle() >= 2e6) // 默认是1e6
         {
             printf("\033[31mTest timeout! at pc 0x%lx\n\033[0m", pc);
             printf("\033[32m");
@@ -801,7 +805,14 @@ private:
                     if (!ri)
                         ri = !priv.csr_write(csr_index, GPR[inst->i_type.rs1]);
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 case FUNCT3_CSRRS:
@@ -814,7 +825,14 @@ private:
                     if (!ri && inst->i_type.rs1)
                         ri = !priv.csr_write(csr_index, csr_result | GPR[inst->i_type.rs1]);
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 case FUNCT3_CSRRC:
@@ -827,7 +845,14 @@ private:
                     if (!ri && inst->i_type.rs1)
                         ri = !priv.csr_write(csr_index, csr_result & (~GPR[inst->i_type.rs1]));
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 case FUNCT3_CSRRWI:
@@ -840,7 +865,14 @@ private:
                     if (!ri)
                         ri = !priv.csr_write(csr_index, inst->i_type.rs1);
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 case FUNCT3_CSRRSI:
@@ -853,7 +885,14 @@ private:
                     if (!ri && inst->i_type.rs1)
                         ri = !priv.csr_write(csr_index, csr_result | inst->i_type.rs1);
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 case FUNCT3_CSRRCI:
@@ -866,7 +905,14 @@ private:
                     if (!ri && inst->i_type.rs1)
                         ri = !priv.csr_write(csr_index, csr_result & (~(inst->i_type.rs1)));
                     if (!ri && inst->i_type.rd)
+                    {
+                        if (csr_index == csr_mcycle || csr_index == csr_minstret)
+                        {
+                            debug_is_mcycle = csr_index == csr_mcycle;
+                            debug_is_minstret = csr_index == csr_minstret;
+                        }
                         set_GPR(inst->i_type.rd, csr_result);
+                    }
                     break;
                 }
                 default:

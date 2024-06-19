@@ -22,7 +22,12 @@ clean:
 	rm -rf obj_dir
 
 perf: obj_dir/V$(TOP_NAME)
-	./obj_dir/V$(TOP_NAME) ./test/bin/am-tests/quick-sort.bin -rvtest -perf
+	count=0; \
+	for test in ./test/bin/riscv-test/benchmarks/*; do \
+		count=$$((count + 1)); \
+		echo "Running test $$count: $$test"; \
+		./obj_dir/V$(TOP_NAME) $$test -rvtest -pc -perf; \
+	done; \
 
 lab1: obj_dir/V$(TOP_NAME)
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab1.bin -rvtest -initgprs -trace 10000000 -pc

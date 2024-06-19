@@ -13,7 +13,7 @@ bool run_riscv_test = false;
 bool dump_pc_history = false;
 bool print_pc = false;
 bool should_delay = false;
-bool dual_issue = false;
+bool dual_issue = true;
 bool perf_counter = false;
 bool init_gprs = false;
 bool write_append = false;
@@ -176,7 +176,7 @@ void riscv_test_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref, const char *riscv_
             if ((top->debug_pc != cemu_rvcore.debug_pc ||
                  cemu_rvcore.debug_reg_num != 0 &&
                      (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
-                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)))
+                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata && !(cemu_rvcore.debug_is_mcycle || cemu_rvcore.debug_is_minstret))))
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
@@ -191,6 +191,13 @@ void riscv_test_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref, const char *riscv_
                     cemu_rvcore.dump_pc_history();
                 else if (delay-- == 0)
                     running = false;
+            }
+            else
+            {
+                if(cemu_rvcore.debug_is_mcycle || cemu_rvcore.debug_is_minstret)
+                {
+                    cemu_rvcore.set_GPR(cemu_rvcore.debug_reg_num, top->debug_rf_wdata);
+                }
             }
         }
         if (trace_on)
