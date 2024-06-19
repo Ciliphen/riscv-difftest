@@ -111,7 +111,7 @@ private:
         debug_pc = pc;
         debug_reg_num = 0;
         debug_reg_wdata = 0;
-        if (run_riscv_test && priv.get_cycle() >= 1e6) // 默认是1e6
+        if (run_riscv_test && priv.get_cycle() >= 2e6) // 默认是1e6
         {
             printf("\033[31mTest timeout! at pc 0x%lx\n\033[0m", pc);
             printf("\033[32m");

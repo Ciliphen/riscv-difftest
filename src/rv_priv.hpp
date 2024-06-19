@@ -11,6 +11,9 @@
 #include "rv_sv39.hpp"
 
 extern bool run_riscv_test;
+extern bool perf_counter;
+extern long long total_instr;
+extern long long total_cycle;
 class rv_priv
 {
 public:
@@ -422,6 +425,12 @@ public:
                         if (tohost == 1)
                         {
                             printf("\033[32mTest Pass!\n");
+                            if (perf_counter)
+                            {
+                                printf("Total instr: %lld\n", total_instr);
+                                printf("Total cycle: %lld\n", total_cycle);
+                                printf("IPC: %lf\n", (double)total_instr / total_cycle);
+                            }
                             printf("\033[0m"); // Reset the text color to default
                             exit(0);
                         }
@@ -462,6 +471,12 @@ public:
                         if (tohost == 1)
                         {
                             printf("\033[32mTest Pass!\n");
+                            if (perf_counter)
+                            {
+                                printf("Total instr: %lld\n", total_instr);
+                                printf("Total cycle: %lld\n", total_cycle);
+                                printf("IPC: %lf\n", (double)total_instr / total_cycle);
+                            }
                             printf("\033[0m"); // Reset the text color to default
                             exit(0);
                         }
