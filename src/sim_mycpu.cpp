@@ -8,12 +8,13 @@
 #include "rv_plic.hpp"
 #include <stdio.h>
 
+bool dual_issue = false;
+
 bool running = true;
 bool run_riscv_test = false;
 bool dump_pc_history = false;
 bool print_pc = false;
 bool should_delay = false;
-bool dual_issue = true;
 bool perf_counter = false;
 bool init_gprs = false;
 bool write_append = false;
@@ -455,6 +456,10 @@ int main(int argc, char **argv, char **env)
         else if (strcmp(argv[i], "-writeappend") == 0) // 追加写入
         {
             write_append = true;
+        }
+        else if (strcmp(argv[i], "-dual_issue") == 0) // 追加写入
+        {
+            dual_issue = true;
         }
         else
         {

@@ -72,10 +72,10 @@ $(TRACE_TESTS67): obj_dir/V$(TOP_NAME)
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab6.bin -rvtest -cpu_trace -writeappend; \
 	echo "Total tests run: $$count";
 
-TEST9_13 := lab9 lab10 lab11 lab12 lab13
-TRACE_TEST9_13 := $(addprefix trace_,$(TEST9_13))
+TEST9_10 := lab9 lab10
+TRACE_TEST9_10 := $(addprefix trace_,$(TEST9_10))
 
-$(TEST9_13): obj_dir/V$(TOP_NAME)
+$(TEST9_10): obj_dir/V$(TOP_NAME)
 	count=0; \
 	for test in $$(find ./test/bin/riscv-test/ \( -name "rv64ui-p-*" -o -name "rv64um-p-*" -o -name "rv64mi-p-*" \) | grep -vE "rv64ui-p-fence_i|rv64mi-p-access"); do \
 		count=$$((count + 1)); \
@@ -84,12 +84,43 @@ $(TEST9_13): obj_dir/V$(TOP_NAME)
 	done; \
 	echo "Total tests run: $$count";
 
-$(TRACE_TEST9_13): obj_dir/V$(TOP_NAME)
+$(TRACE_TEST9_10): obj_dir/V$(TOP_NAME)
+	rm -rf ./trace.txt
 	count=0; \
 	for test in $$(find ./test/bin/riscv-test/ \( -name "rv64ui-p-*" -o -name "rv64um-p-*" -o -name "rv64mi-p-*" \) | grep -vE "rv64ui-p-fence_i|rv64mi-p-access"); do \
 		count=$$((count + 1)); \
 		echo "Running test $$count: $$test"; \
 		./obj_dir/V$(TOP_NAME) $$test -rvtest -cpu_trace -writeappend; \
+	done; \
+	echo "Total tests run: $$count";
+
+TEST11_13 := lab11 lab12 lab13
+TRACE_TEST11_13 := $(addprefix trace_,$(TEST11_13))
+
+$(TEST11_13): obj_dir/V$(TOP_NAME)
+	count=0; \
+	for test in $$(find ./test/bin/riscv-test/ \( -name "rv64ui-p-*" -o -name "rv64um-p-*" -o -name "rv64mi-p-*" \) | grep -vE "rv64mi-p-access"); do \
+		count=$$((count + 1)); \
+		echo "Running test $$count: $$test"; \
+		if [ "$@" = "lab13" ]; then \
+            ./obj_dir/V$(TOP_NAME) $$test -rvtest -pc -dual_issue; \
+        else \
+            ./obj_dir/V$(TOP_NAME) $$test -rvtest -pc; \
+        fi; \
+	done; \
+	echo "Total tests run: $$count";
+
+$(TRACE_TEST11_13): obj_dir/V$(TOP_NAME)
+	rm -rf ./trace.txt
+	count=0; \
+	for test in $$(find ./test/bin/riscv-test/ \( -name "rv64ui-p-*" -o -name "rv64um-p-*" -o -name "rv64mi-p-*" \) | grep -vE "rv64mi-p-access"); do \
+		count=$$((count + 1)); \
+		echo "Running test $$count: $$test"; \
+		if [ "$@" = "trace_lab13" ]; then \
+            ./obj_dir/V$(TOP_NAME) $$test -rvtest -cpu_trace -writeappend -dual_issue; \
+        else \
+            ./obj_dir/V$(TOP_NAME) $$test -rvtest -cpu_trace -writeappend; \
+        fi; \
 	done; \
 	echo "Total tests run: $$count";
 
