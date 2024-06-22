@@ -14,9 +14,9 @@ verilog:
 	cp $(CHISEL_DIR)/build/PuaCpu.v $(SRC_DIR)
 
 test: obj_dir/V$(TOP_NAME)
-	$(MAKE) -C ./test/lab_test/lab6 test
-	# ./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -golden_trace # -initgprs # lab1记得初始化寄存器堆
-	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -perf # -trace 10000000 -pc # -initgprs # lab1记得初始化寄存器堆
+	$(MAKE) -C ./test/lab_test/lab5 test
+	# ./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -golden_trace -hasdelayslot
+	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -trace 10000000 -pc -hasdelayslot
 
 clean:
 	rm -rf obj_dir
@@ -43,6 +43,12 @@ $(TESTS234): %: obj_dir/V$(TOP_NAME)
 
 $(TRACE_TESTS234): trace_%: obj_dir/V$(TOP_NAME)
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/$*.bin -rvtest -cpu_trace
+
+lab5: obj_dir/V$(TOP_NAME)
+	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab5.bin -rvtest -trace 10000000 -pc -hasdelayslot
+
+trace_lab5: obj_dir/V$(TOP_NAME)
+	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab5.bin -rvtest -cpu_trace -hasdelayslot
 
 TEST67 := lab6 lab7
 TRACE_TESTS67 := $(addprefix trace_,$(TEST67))

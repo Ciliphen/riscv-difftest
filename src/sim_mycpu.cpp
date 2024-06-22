@@ -17,6 +17,7 @@ bool dual_issue = false;
 bool perf_counter = false;
 bool init_gprs = false;
 bool write_append = false;
+bool has_delayslot = false;
 const uint64_t commit_timeout = 3000;
 const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
@@ -111,6 +112,8 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     uint64_t ticks = 0;
     uint64_t last_commit = ticks;
     uint64_t pc_cnt = print_pc_cycle;
+    int delayslot_cnt = 0;
+    bool delayslot_flag = true;
     int delay = 1500;
     while (!Verilated::gotFinish() && sim_time > 0 && running)
     {
@@ -140,7 +143,18 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
             // cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_minstret, top->debug_csr_mip, top->debug_csr_interrupt);
-            cemu_rvcore.step(0, 0, 0, 0);
+            if (has_delayslot)
+            {
+                if (!delayslot_cnt)
+                {
+                    cemu_rvcore.step(0, 0, 0, 0);
+                    delayslot_flag = true;
+                }
+            }
+            else
+            {
+                cemu_rvcore.step(0, 0, 0, 0);
+            }
             last_commit = ticks;
             if (pc_cnt++ >= print_pc_cycle && print_pc)
             {
@@ -150,7 +164,8 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
             if ((top->debug_pc != cemu_rvcore.debug_pc ||
                  cemu_rvcore.debug_reg_num != 0 &&
                      (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
-                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)))
+                      top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)) &&
+                !delayslot_cnt)
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
@@ -166,6 +181,18 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
                 else if (delay-- == 0)
                     running = false;
             }
+            // ==========================
+            if (has_delayslot)
+            {
+                if (delayslot_cnt > 0)
+                    delayslot_cnt--;
+                if (cemu_rvcore.debug_is_branch && delayslot_flag)
+                {
+                    delayslot_cnt = 2;
+                    delayslot_flag = false;
+                }
+            }
+            // ==========================
         }
         if (trace_on)
         {
@@ -241,6 +268,8 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     uint64_t ticks = 0;
     uint64_t last_commit = ticks;
     int delay = 10;
+    int delayslot_cnt = 0;
+    bool delayslot_flag = true;
     while (!Verilated::gotFinish() && sim_time > 0 && running)
     {
         if (rst_ticks > 0)
@@ -262,13 +291,24 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
         }
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
-            cemu_rvcore.step(0, 0, 0, 0);
+            if (has_delayslot)
+            {
+                if (!delayslot_cnt)
+                {
+                    cemu_rvcore.step(0, 0, 0, 0);
+                    delayslot_flag = true;
+                }
+            }
+            else
+            {
+                cemu_rvcore.step(0, 0, 0, 0);
+            }
             last_commit = ticks;
             if ((top->debug_pc != cemu_rvcore.debug_pc ||
                  cemu_rvcore.debug_reg_num != 0 &&
                      (top->debug_rf_wnum != cemu_rvcore.debug_reg_num ||
                       top->debug_rf_wdata != cemu_rvcore.debug_reg_wdata)) &&
-                running)
+                !delayslot_cnt)
             {
                 printf("\033[1;31mError!\033[0m\n");
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
@@ -284,6 +324,18 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
                 else if (delay-- == 0)
                     running = false;
             }
+            // ==========================
+            if (has_delayslot)
+            {
+                if (delayslot_cnt > 0)
+                    delayslot_cnt--;
+                if (cemu_rvcore.debug_is_branch && delayslot_flag)
+                {
+                    delayslot_cnt = 2;
+                    delayslot_flag = false;
+                }
+            }
+            // ==========================
             fprintf(trace_file, "1 %016lx %02lx %016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
         }
         if (trace_on)
@@ -422,6 +474,10 @@ int main(int argc, char **argv, char **env)
         else if (strcmp(argv[i], "-writeappend") == 0) // 追加写入
         {
             write_append = true;
+        }
+        else if (strcmp(argv[i], "-hasdelayslot") == 0) // 是否有延迟槽
+        {
+            has_delayslot = true;
         }
         else
         {
