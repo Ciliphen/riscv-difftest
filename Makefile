@@ -14,9 +14,9 @@ verilog:
 	cp $(CHISEL_DIR)/build/PuaCpu.v $(SRC_DIR)
 
 test: obj_dir/V$(TOP_NAME)
-	$(MAKE) -C ./test/lab_test/lab5 test
+	$(MAKE) -C ./test/lab_test/lab8 test
 	# ./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -golden_trace -hasdelayslot
-	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -trace 10000000 -pc -hasdelayslot
+	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -trace 10000000 -pc -onlymodem
 
 clean:
 	rm -rf obj_dir
@@ -77,6 +77,13 @@ $(TRACE_TESTS67): obj_dir/V$(TOP_NAME)
 	echo "Running test $$count: ./test/bin/lab-test/lab6.bin"; \
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab6.bin -rvtest -cpu_trace -writeappend; \
 	echo "Total tests run: $$count";
+
+lab8: obj_dir/V$(TOP_NAME)
+	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab8.bin -rvtest -trace 10000000 -pc -onlymodem
+
+trace_lab8: obj_dir/V$(TOP_NAME)
+	rm -rf ./trace.txt
+	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab8.bin -rvtest -cpu_trace -onlymodem
 
 lab9: obj_dir/V$(TOP_NAME)
 	count=0; \

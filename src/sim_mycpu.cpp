@@ -18,6 +18,7 @@ bool perf_counter = false;
 bool init_gprs = false;
 bool write_append = false;
 bool has_delayslot = false;
+bool only_modeM = false;
 const uint64_t commit_timeout = 3000;
 const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
@@ -357,53 +358,6 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     fclose(trace_file);
 }
 
-void make_golden_trace(const char *riscv_test_path)
-{
-
-    // setup cemu {
-    rv_systembus cemu_system_bus;
-    mmio_mem cemu_mem(128 * 1024 * 1024, riscv_test_path);
-
-    assert(cemu_system_bus.add_dev(0x80000000, 0x80000000, &cemu_mem));
-
-    rv_core cemu_rvcore(cemu_system_bus);
-    cemu_rvcore.jump(0x80000000);
-    if (init_gprs)
-    {
-        for (int i = 0; i < 32; i++)
-        {
-            cemu_rvcore.set_GPR(i, i);
-        }
-    }
-    // setup cemu }
-
-    FILE *golden_trace_file;
-    if (write_append)
-    {
-        golden_trace_file = fopen("golden_trace.txt", "a");
-    }
-    else
-    {
-        golden_trace_file = fopen("golden_trace.txt", "w");
-    }
-    if (golden_trace_file == NULL)
-    {
-        printf("Error opening file!\n");
-    }
-
-    uint64_t ticks = 0;
-    uint64_t last_commit = ticks;
-    int delay = 10;
-    while (running)
-    {
-        // instr retire
-        cemu_rvcore.step(0, 0, 0, 0);
-        fprintf(golden_trace_file, "1 %016lx %02lx %016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
-        ticks++;
-    }
-    printf("total_ticks: %lu\n", ticks);
-    fclose(golden_trace_file);
-}
 int main(int argc, char **argv, char **env)
 {
     Verilated::commandArgs(argc, argv);
@@ -417,7 +371,6 @@ int main(int argc, char **argv, char **env)
         NOP,
         RISCV_TEST,
         CPU_TRACE,
-        GOLDEN_TRACE,
     } run_mode = RISCV_TEST;
 
     for (int i = 1; i < argc; i++)
@@ -463,10 +416,6 @@ int main(int argc, char **argv, char **env)
         {
             run_mode = CPU_TRACE;
         }
-        else if (strcmp(argv[i], "-golden_trace") == 0) // 生成golden trace
-        {
-            run_mode = GOLDEN_TRACE;
-        }
         else if (strcmp(argv[i], "-initgprs") == 0) // 初始化寄存器
         {
             init_gprs = true;
@@ -478,6 +427,10 @@ int main(int argc, char **argv, char **env)
         else if (strcmp(argv[i], "-hasdelayslot") == 0) // 是否有延迟槽
         {
             has_delayslot = true;
+        }
+        else if (strcmp(argv[i], "-onlymodem") == 0) // 只有modeM
+        {
+            only_modeM = true;
         }
         else
         {
@@ -503,9 +456,6 @@ int main(int argc, char **argv, char **env)
         break;
     case CPU_TRACE:
         make_cpu_trace(top, mmio_ref, file_load_path);
-        break;
-    case GOLDEN_TRACE:
-        make_golden_trace(file_load_path);
         break;
     default:
         printf("Unknown running mode.\n");

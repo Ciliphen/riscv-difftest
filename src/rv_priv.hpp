@@ -14,6 +14,7 @@ extern bool run_riscv_test;
 extern bool perf_counter;
 extern long long total_instr;
 extern long long total_cycle;
+extern bool only_modeM;
 class rv_priv
 {
 public:
@@ -37,9 +38,17 @@ public:
         next_priv = M_MODE;
         status = 0;
         csr_mstatus_def *mstatus = (csr_mstatus_def *)&status;
-        mstatus->uxl = 2;
         csr_misa_def *isa = (csr_misa_def *)&misa;
-        isa->ext = rv_ext('i') | rv_ext('m') | rv_ext('u');
+        if (only_modeM && run_riscv_test)
+        {
+            isa->ext = rv_ext('i') | rv_ext('m') | rv_ext('u');
+            mstatus->mpp = M_MODE;
+        }
+        else
+        {
+            mstatus->uxl = 2;
+            isa->ext = rv_ext('i') | rv_ext('m') | rv_ext('u');
+        }
         isa->mxl = 2; // rv64
         isa->blank = 0;
         medeleg = 0;
@@ -239,20 +248,28 @@ public:
         {
             csr_mstatus_def *nstatus = (csr_mstatus_def *)&csr_data;
             csr_mstatus_def *mstatus = (csr_mstatus_def *)&status;
-            // mstatus->sie = nstatus->sie;
-            mstatus->mie = nstatus->mie;
-            // mstatus->spie = nstatus->spie;
-            mstatus->mpie = nstatus->mpie;
-            assert(mstatus->spie != 2);
-            assert(mstatus->mpie != 2);
-            // mstatus->spp = nstatus->spp;
-            mstatus->mpp = (nstatus->mpp == 3 || nstatus->mpp == 0) ? nstatus->mpp : 0;
-            mstatus->mprv = nstatus->mprv;
-            // mstatus->sum = nstatus->sum; // always true
-            // mstatus->mxr = nstatus->mxr; // always true
-            // mstatus->tvm = nstatus->tvm;
-            // mstatus->tw = nstatus->tw; // not supported but wfi impl as nop
-            // mstatus->tsr = nstatus->tsr;
+            if (only_modeM && run_riscv_test)
+            {
+                mstatus->mie = nstatus->mie;
+                mstatus->mpie = nstatus->mpie;
+            }
+            else
+            {
+                // mstatus->sie = nstatus->sie;
+                mstatus->mie = nstatus->mie;
+                // mstatus->spie = nstatus->spie;
+                mstatus->mpie = nstatus->mpie;
+                assert(mstatus->spie != 2);
+                assert(mstatus->mpie != 2);
+                // mstatus->spp = nstatus->spp;
+                mstatus->mpp = (nstatus->mpp == 3 || nstatus->mpp == 0) ? nstatus->mpp : 0;
+                mstatus->mprv = nstatus->mprv;
+                // mstatus->sum = nstatus->sum; // always true
+                // mstatus->mxr = nstatus->mxr; // always true
+                // mstatus->tvm = nstatus->tvm;
+                // mstatus->tw = nstatus->tw; // not supported but wfi impl as nop
+                // mstatus->tsr = nstatus->tsr;
+            }
             break;
         }
         case csr_mie:
