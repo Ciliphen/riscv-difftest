@@ -94,9 +94,9 @@ public:
     {
         difftest_mode = value;
     }
-    void import_diff_test_info(uint64_t mcycle, uint64_t minstret, uint64_t mip, bool interrupt_on)
+    void import_diff_test_info(uint64_t mip, bool interrupt_on)
     {
-        priv.difftest_preexec(mcycle, minstret, mip, interrupt_on);
+        priv.difftest_preexec(mip, interrupt_on);
         int_allow = interrupt_on;
     }
 

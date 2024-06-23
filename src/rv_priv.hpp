@@ -17,11 +17,10 @@ extern long long total_cycle;
 class rv_priv
 {
 public:
-    void difftest_preexec(uint64_t pua_mcycle, uint64_t pua_minstret, uint64_t pua_mip, bool interrupt_on)
+    uint64_t physical_pc = 0;
+    void difftest_preexec(uint64_t pua_mip, bool interrupt_on)
     {
         cur_need_trap = false;
-        mcycle = pua_mcycle;
-        minstret = pua_minstret;
         ip = pua_mip;
         cur_priv = next_priv;
     }
@@ -37,9 +36,10 @@ public:
         next_priv = M_MODE;
         status = 0;
         csr_mstatus_def *mstatus = (csr_mstatus_def *)&status;
+        mstatus->sxl = 2;
         mstatus->uxl = 2;
         csr_misa_def *isa = (csr_misa_def *)&misa;
-        isa->ext = rv_ext('i') | rv_ext('m') | rv_ext('u');
+        isa->ext = rv_ext('i') | rv_ext('m') | rv_ext('s') | rv_ext('u');
         isa->mxl = 2; // rv64
         isa->blank = 0;
         medeleg = 0;
@@ -208,8 +208,62 @@ public:
         case csr_minstret:
             csr_result = minstret;
             break;
+        case csr_sstatus:
+        {
+            csr_result = 0;
+            csr_sstatus_def *sstatus = (csr_sstatus_def *)&csr_result;
+            csr_mstatus_def *mstatus = (csr_mstatus_def *)&status;
+            sstatus->sie = mstatus->sie;
+            sstatus->spie = mstatus->spie;
+            sstatus->ube = mstatus->ube;
+            sstatus->spp = mstatus->spp;
+            sstatus->vs = mstatus->vs;
+            sstatus->fs = mstatus->fs;
+            sstatus->xs = mstatus->xs;
+            sstatus->sum = mstatus->sum;
+            sstatus->mxr = mstatus->mxr;
+            sstatus->uxl = mstatus->uxl;
+            sstatus->sd = mstatus->sd;
+            break;
+        }
+        case csr_sie:
+            csr_result = ie & s_int_mask;
+            break;
+        case csr_stvec:
+            csr_result = stvec;
+            break;
+        case csr_scounteren:
+            csr_result = scounteren;
+            break;
+        case csr_sscratch:
+            csr_result = sscratch;
+            break;
+        case csr_sepc:
+            csr_result = sepc;
+            break;
+        case csr_scause:
+            csr_result = scause;
+            break;
+        case csr_stval:
+            csr_result = stval;
+            break;
+        case csr_sip:
+            csr_result = ip & s_int_mask;
+            break;
+        case csr_satp:
+        {
+            const csr_mstatus_def *mstatus = (csr_mstatus_def *)&status;
+            if (cur_priv == S_MODE && mstatus->tvm)
+                return false;
+            csr_result = satp;
+            break;
+        }
         case csr_cycle:
         {
+            csr_counteren_def *mcen = (csr_counteren_def *)&mcounteren;
+            csr_counteren_def *scen = (csr_counteren_def *)&scounteren;
+            if (cur_priv <= S_MODE && (!mcen->cycle || !scen->cycle))
+                return false;
             csr_result = mcycle;
             break;
         }
@@ -220,10 +274,7 @@ public:
             csr_result = 0;
             break;
         default:
-        {
-            csr_result = 0;
             return false;
-        }
         }
         return true;
     }
@@ -231,30 +282,36 @@ public:
     {
         switch (csr_index)
         {
-        case csr_misa:
-        {
-            break;
-        }
         case csr_mstatus:
         {
             csr_mstatus_def *nstatus = (csr_mstatus_def *)&csr_data;
             csr_mstatus_def *mstatus = (csr_mstatus_def *)&status;
-            // mstatus->sie = nstatus->sie;
+            mstatus->sie = nstatus->sie;
             mstatus->mie = nstatus->mie;
-            // mstatus->spie = nstatus->spie;
+            mstatus->spie = nstatus->spie;
             mstatus->mpie = nstatus->mpie;
             assert(mstatus->spie != 2);
             assert(mstatus->mpie != 2);
-            // mstatus->spp = nstatus->spp;
-            mstatus->mpp = (nstatus->mpp == 3 || nstatus->mpp == 0) ? nstatus->mpp : 0;
+            mstatus->spp = nstatus->spp;
+            mstatus->mpp = nstatus->mpp;
             mstatus->mprv = nstatus->mprv;
-            // mstatus->sum = nstatus->sum; // always true
-            // mstatus->mxr = nstatus->mxr; // always true
-            // mstatus->tvm = nstatus->tvm;
-            // mstatus->tw = nstatus->tw; // not supported but wfi impl as nop
-            // mstatus->tsr = nstatus->tsr;
+            mstatus->sum = nstatus->sum; // always true
+            mstatus->mxr = nstatus->mxr; // always true
+            mstatus->tvm = nstatus->tvm;
+            mstatus->tw = nstatus->tw; // not supported but wfi impl as nop
+            mstatus->tsr = nstatus->tsr;
             break;
         }
+        case csr_misa:
+        {
+            break;
+        }
+        case csr_medeleg:
+            medeleg = csr_data & s_exc_mask;
+            break;
+        case csr_mideleg:
+            mideleg = csr_data & s_int_mask;
+            break;
         case csr_mie:
             ie = csr_data & m_int_mask;
             break;
@@ -267,6 +324,7 @@ public:
         }
         case csr_mcounteren:
         {
+            mcounteren = csr_data & counter_mask;
             break;
         }
         case csr_mscratch:
@@ -287,6 +345,58 @@ public:
         case csr_mcycle:
             mcycle = csr_data;
             break;
+        case csr_sstatus:
+        {
+            csr_sstatus_def *nstatus = (csr_sstatus_def *)&csr_data;
+            csr_sstatus_def *sstatus = (csr_sstatus_def *)&status;
+            sstatus->sie = nstatus->sie;
+            sstatus->spie = nstatus->spie;
+            assert(sstatus->spie != 2);
+            sstatus->spp = nstatus->spp;
+            sstatus->sum = nstatus->sum;
+            sstatus->mxr = nstatus->mxr;
+            break;
+        }
+        case csr_sie:
+            ie = (ie & (~s_int_mask)) | (csr_data & s_int_mask);
+            break;
+        case csr_stvec:
+        {
+            csr_tvec_def *tvec = (csr_tvec_def *)&csr_data;
+            if (tvec->mode > 1)
+                tvec->mode = 0;
+            stvec = csr_data;
+            break;
+        }
+        case csr_scounteren:
+            scounteren = csr_data & counter_mask;
+            break;
+        case csr_sscratch:
+            sscratch = csr_data;
+            break;
+        case csr_sepc:
+            sepc = csr_data;
+            break;
+        case csr_scause:
+            scause = csr_data;
+            break;
+        case csr_stval:
+            stval = csr_data;
+            break;
+        case csr_sip:
+            ip = (ip & (~s_int_mask)) | (csr_data & s_int_mask);
+            break;
+        case csr_satp:
+        {
+            const csr_mstatus_def *mstatus = (csr_mstatus_def *)&status;
+            if (cur_priv == S_MODE && mstatus->tvm)
+                return false;
+            satp_def *satp_reg = (satp_def *)&csr_data;
+            if (satp_reg->mode != 0 && satp_reg->mode != 8)
+                satp_reg->mode = 0;
+            satp = csr_data;
+            break;
+        }
         case csr_tselect:
             break;
         case csr_tdata1:
@@ -318,13 +428,7 @@ public:
     }
     bool csr_op_permission_check(uint16_t csr_index, bool write)
     {
-        /*
-            We can make a simple implementation for csr_cycle as following:
-            0. "cycle" is the only user level CSR we need to implement to pass the RISC-V Test.
-            1. mcounteren can be read only zero, so any privilege level other than Machine will cause trap.
-            2. If S-Mode didn't implement, we can just check whether the privilege mode is Machine for illegal instruction check.
-         */
-        if (cur_priv != M_MODE)
+        if (((csr_index >> 8) & 3) > cur_priv)
             return false;
         if ((((csr_index >> 10) & 3) == 3) && write)
             return false;
@@ -342,6 +446,7 @@ public:
             rv_exc_code res1 = va_if(start_addr + 2, 2, buffer + 2, bad_va);
             if (res1 != exc_custom_ok)
                 return res1;
+            physical_pc = start_addr;
             return exc_custom_ok;
         }
         else
@@ -354,7 +459,10 @@ public:
                 if (!pstatus)
                     return exc_instr_acc_fault;
                 else
+                {
+                    physical_pc = start_addr;
                     return exc_custom_ok;
+                }
             }
             else
             {
@@ -371,7 +479,10 @@ public:
                 if (!pstatus)
                     return exc_instr_acc_fault;
                 else
+                {
+                    physical_pc = pa;
                     return exc_custom_ok;
+                }
             }
         }
     }
@@ -411,6 +522,8 @@ public:
 
     rv_exc_code va_write(uint64_t start_addr, uint64_t size, const uint8_t *buffer)
     {
+        // printf("-------------------------\n");
+        // printf("va_write: start_addr = 0x%lx, size = %ld\n", start_addr, size);
         const satp_def *satp_reg = (satp_def *)&satp;
         const csr_mstatus_def *mstatus = (csr_mstatus_def *)&status;
         if ((cur_priv == M_MODE && (!mstatus->mprv || mstatus->mpp == M_MODE)) || satp_reg->mode == 0)
@@ -655,7 +768,6 @@ public:
         assert(!cur_need_trap);
         cur_need_trap = true;
         bool trap_to_s = false;
-        // printf("trap %ld, tval = 0x%lx, pc=0x%lx, mode=%d\n",cause.cause,tval,cur_pc,cur_priv);
         // check delegate to s
         if (cur_priv != M_MODE)
         {
@@ -672,6 +784,8 @@ public:
         }
         if (trap_to_s)
         {
+            // printf("trap to s\n");
+            // printf("pc = 0x%lx\n", cur_pc);
             stval = tval;
             scause = *((uint64_t *)&cause);
             sepc = cur_pc;
@@ -696,6 +810,10 @@ public:
             trap_pc = (tvec->base << 2) + (tvec->mode ? (cause.cause) * 4 : 0);
             next_priv = M_MODE;
         }
+        // printf("trap %ld, tval = 0x%lx, pc=0x%lx, mode=%d\n", cause.cause, tval, cur_pc, cur_priv);
+        // printf("stval = 0x%lx, scause = 0x%lx, sepc = 0x%lx\n", stval, scause, sepc);
+        // printf("mtval = 0x%lx, mcause = 0x%lx, mepc = 0x%lx\n", mtval, mcause, mepc);
+
         if (cause.cause == exc_instr_pgfault && tval == trap_pc)
             assert(false);
     }
