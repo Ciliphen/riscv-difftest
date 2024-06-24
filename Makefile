@@ -1,6 +1,6 @@
 TOP_NAME := top
 SRC_DIR  := ./core
-SRC_FILE := $(shell find $(SRC_DIR) -name '*.svh') $(shell find $(SRC_DIR) -name '*.v') $(shell find $(SRC_DIR) -name '*.sv')
+SRC_FILE := $(shell find $(SRC_DIR) -name '*.svh') $(shell find $(SRC_DIR) -name '*.h') $(shell find $(SRC_DIR) -name '*.v') $(shell find $(SRC_DIR) -name '*.sv')
 CHISEL_DIR = ../chisel
 BUILD_DIR = $(CHISEL_DIR)/build
 
