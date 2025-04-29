@@ -2,9 +2,8 @@
 *.vcd
 obj_dir
 
-test/soft/
-core/
-!core/top_axi_wrapper.v
+core/*
+!core/top.v
 
 test/sim/gen_bin/build/*
 test/sim/trace.txt
