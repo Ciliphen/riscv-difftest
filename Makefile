@@ -24,6 +24,9 @@ func: obj_dir/V$(TOP_NAME)
 os: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop -os -pc -printpc
 
+emu: obj_dir/V$(TOP_NAME)
+	./obj_dir/Vtop -os -emu
+
 perf: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop ./test/bin/riscv-test/dhrystone.riscv.bin -rvtest -perf
 
