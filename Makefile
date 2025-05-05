@@ -3,6 +3,7 @@ SRC_DIR  := ./core
 SRC_FILE := $(shell find $(SRC_DIR) -name '*.svh') $(shell find $(SRC_DIR) -name '*.h') $(shell find $(SRC_DIR) -name '*.v') $(shell find $(SRC_DIR) -name '*.sv')
 CHISEL_DIR = ../chisel
 BUILD_DIR = $(CHISEL_DIR)/build
+TESTBIN_DIR = ./test/bin/am-tests/add.bin
 
 .PHONY: clean
 
@@ -13,15 +14,19 @@ verilog:
 	$(MAKE) -C $(CHISEL_DIR) verilog
 	cp $(CHISEL_DIR)/build/PuaCpu.v $(SRC_DIR)
 
-test: obj_dir/V$(TOP_NAME)
-	$(MAKE) -C ./test/lab_test/lab8 test
-	# ./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -golden_trace -hasdelayslot
-	./obj_dir/V$(TOP_NAME) ./test/lab_test/build/test.bin -rvtest -trace 10000000 -pc -onlymodem
+trace: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "trace") # DO NOT REMOVE THIS LINE!!!
+	./obj_dir/V$(TOP_NAME) $(TESTBIN_DIR) -rvtest -trace 10000000 -pc
+
+test:
+	$(MAKE) -C $(CHISEL_DIR) test
 
 clean:
 	rm -rf obj_dir
+	rm -rf core/Puacpu.v
 
 perf: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "perf test RTL") # DO NOT REMOVE THIS LINE!!!
 	count=0; \
 	for test in ./test/bin/riscv-test/benchmarks/*; do \
 		count=$$((count + 1)); \
@@ -30,30 +35,37 @@ perf: obj_dir/V$(TOP_NAME)
 	done; \
 
 lab1: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "test lab1") # DO NOT REMOVE THIS LINE!!!
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab1.bin -rvtest -initgprs -trace 10000000 -pc
 
 trace_lab1: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "trace lab1") # DO NOT REMOVE THIS LINE!!!
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab1.bin -rvtest -initgprs -cpu_trace
 
 TESTS234 := lab2 lab3 lab4
 TRACE_TESTS234 := $(addprefix trace_,$(TESTS234))
 
 $(TESTS234): %: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "test $@") # DO NOT REMOVE THIS LINE!!!
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/$@.bin -rvtest -trace 10000000 -pc
 
 $(TRACE_TESTS234): trace_%: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "trace $*") # DO NOT REMOVE THIS LINE!!!
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/$*.bin -rvtest -cpu_trace
 
 lab5: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "test lab5") # DO NOT REMOVE THIS LINE!!!
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab5.bin -rvtest -trace 10000000 -pc -hasdelayslot
 
 trace_lab5: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "trace lab5") # DO NOT REMOVE THIS LINE!!!
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab5.bin -rvtest -cpu_trace -hasdelayslot
 
 TEST67 := lab6 lab7
 TRACE_TESTS67 := $(addprefix trace_,$(TEST67))
 
 $(TEST67): obj_dir/V$(TOP_NAME)
+	$(call git_commit, "test $@") # DO NOT REMOVE THIS LINE!!!
 	count=0; \
 	for test in ./test/bin/am-tests/*; do \
 		count=$$((count + 1)); \
@@ -66,6 +78,7 @@ $(TEST67): obj_dir/V$(TOP_NAME)
 	echo "Total tests run: $$count";
 
 $(TRACE_TESTS67): obj_dir/V$(TOP_NAME)
+	$(call git_commit, "trace $*") # DO NOT REMOVE THIS LINE!!!
 	rm -rf ./trace.txt
 	count=0; \
 	for test in ./test/bin/am-tests/*; do \
@@ -79,15 +92,18 @@ $(TRACE_TESTS67): obj_dir/V$(TOP_NAME)
 	echo "Total tests run: $$count";
 
 lab8: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "test lab8") # DO NOT REMOVE THIS LINE!!!
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab8.bin -rvtest -trace 10000000 -pc -onlymodem
 
 trace_lab8: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "trace lab8") # DO NOT REMOVE THIS LINE!!!
 	rm -rf ./trace.txt
 	./obj_dir/V$(TOP_NAME) ./test/bin/lab-test/lab8.bin -rvtest -cpu_trace -onlymodem
 
 lab9: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "test lab9") # DO NOT REMOVE THIS LINE!!!
 	count=0; \
-	for test in $$(find ./test/bin/riscv-test/ \( -name "rv64ui-p-*" -o -name "rv64um-p-*" -o -name "rv64mi-p-*" \) | grep -vE "rv64ui-p-fence_i|rv64mi-p-access"); do \
+	for test in $$(find ./test/bin/riscv-test/ \( -name "*rv64ui-p-*" -o -name "*rv64um-p-*" -o -name "*rv64mi-p-*" \) | grep -vE "*rv64ui-p-fence_i|*rv64mi-p-access"); do \
 		count=$$((count + 1)); \
 		echo "Running test $$count: $$test"; \
 		./obj_dir/V$(TOP_NAME) $$test -rvtest -pc; \
@@ -95,15 +111,22 @@ lab9: obj_dir/V$(TOP_NAME)
 	echo "Total tests run: $$count";
 
 trace_lab9: obj_dir/V$(TOP_NAME)
+	$(call git_commit, "trace lab9") # DO NOT REMOVE THIS LINE!!!
 	count=0; \
-	for test in $$(find ./test/bin/riscv-test/ \( -name "rv64ui-p-*" -o -name "rv64um-p-*" -o -name "rv64mi-p-*" \) | grep -vE "rv64ui-p-fence_i|rv64mi-p-access"); do \
+	for test in $$(find ./test/bin/riscv-test/ \( -name "*rv64ui-p-*" -o -name "*rv64um-p-*" -o -name "*rv64mi-p-*" \) | grep -vE "*rv64ui-p-fence_i|*rv64mi-p-access"); do \
 		count=$$((count + 1)); \
 		echo "Running test $$count: $$test"; \
 		./obj_dir/V$(TOP_NAME) $$test -rvtest -cpu_trace -writeappend; \
 	done; \
 	echo "Total tests run: $$count";
 
-# mv:
-# 	dir="./test/asm/riscv-test/isa/rv64ssvnapot-p-"; \
-# 	mkdir -p "$$dir"; \
-# 	find ./test/asm/riscv-test/isa/ -type f -name "rv64ssvnapot-p-*" -exec git mv {} "$$dir" \;
+help:
+	@echo "Usage: make [target]"
+	@echo "Available targets:"
+	@echo "  clean             - Remove build artifacts"
+	@echo "  verilog           - Generate verilog files"
+	@echo "  perf              - Run performance tests"
+	@echo "  lab<number>       - Run lab<number>, eg. lab1, lab2, ..."
+	@echo "  trace_lab<number> - Run lab<number> with trace, eg. trace_lab1, trace_lab2, ..."
+
+-include ../Makefile

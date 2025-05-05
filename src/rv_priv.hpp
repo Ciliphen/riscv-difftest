@@ -39,15 +39,20 @@ public:
         status = 0;
         csr_mstatus_def *mstatus = (csr_mstatus_def *)&status;
         csr_misa_def *isa = (csr_misa_def *)&misa;
-        if (only_modeM && run_riscv_test)
+        if (run_riscv_test)
         {
-            isa->ext = rv_ext('i') | rv_ext('m') | rv_ext('u');
-            mstatus->mpp = M_MODE;
-        }
-        else
-        {
-            mstatus->uxl = 2;
-            isa->ext = rv_ext('i') | rv_ext('m') | rv_ext('u');
+            if (only_modeM)
+            {
+                // 只实现M-Mode的CPU
+                isa->ext = rv_ext('i') | rv_ext('m');
+                mstatus->mpp = M_MODE;
+            }
+            else
+            {
+                // 实现M-Mode和U-Mode的CPU
+                mstatus->uxl = 2;
+                isa->ext = rv_ext('i') | rv_ext('m') | rv_ext('u');
+            }
         }
         isa->mxl = 2; // rv64
         isa->blank = 0;

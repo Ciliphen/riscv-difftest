@@ -412,7 +412,7 @@ int main(int argc, char **argv, char **env)
         {
             should_delay = true;
         }
-        else if (strcmp(argv[i], "-cpu_trace") == 0) // 生成golden trace
+        else if (strcmp(argv[i], "-cpu_trace") == 0) // 生成cpu trace
         {
             run_mode = CPU_TRACE;
         }
