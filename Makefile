@@ -35,5 +35,11 @@ perf: obj_dir/V$(TOP_NAME)
 objdump:
 	./test/tools/riscv64-unknown-linux-gnu-objdump -D -M no-aliases,numeric --visualize-jumps=extended-color --disassembler-color=extended $(DUMP_FILE) | less
 
+opensbi_objdump:
+	./test/tools/riscv64-unknown-linux-gnu-objdump -D -M no-aliases,numeric --visualize-jumps=extended-color --disassembler-color=extended ./test/bin/os/fw_payload.elf | less
+
+vmlinux_objdump:
+	./test/tools/riscv64-unknown-linux-gnu-objdump -D -M no-aliases,numeric --visualize-jumps=extended-color --disassembler-color=extended ./test/bin/os/vmlinux.elf | less
+
 clean:
 	rm -rf obj_dir
