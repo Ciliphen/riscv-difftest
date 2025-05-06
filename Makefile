@@ -3,6 +3,7 @@ SRC_DIR  := ./core
 SRC_FILE := $(shell find $(SRC_DIR) -name '*.svh') $(shell find $(SRC_DIR) -name '*.v') $(shell find $(SRC_DIR) -name '*.sv')
 CHISEL_DIR = ../chisel
 BUILD_DIR = $(CHISEL_DIR)/build
+DUMP_FILE = ./test/bin/os/fw_payload.elf
 
 .PHONY: clean
 
@@ -29,6 +30,9 @@ emu: obj_dir/V$(TOP_NAME)
 
 perf: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop ./test/bin/riscv-test/dhrystone.riscv.bin -rvtest -perf
+
+objdump:
+	./test/tools/riscv64-unknown-linux-gnu-objdump -D -M no-aliases,numeric --visualize-jumps=extended-color --disassembler-color=extended $(DUMP_FILE) | less
 
 clean:
 	rm -rf obj_dir
