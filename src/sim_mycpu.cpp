@@ -27,6 +27,10 @@ long long current_pc;
 
 VerilatedFstC fst;
 
+long unsigned int *pc = NULL;
+long unsigned int *phypc = NULL;
+unsigned int *inst = NULL;
+
 void open_trace()
 {
     fst.open("trace.fst");
@@ -106,7 +110,19 @@ void uart_input(uartlite &uart)
     while (running)
     {
         char c = getchar();
-        if (c == 10)
+        // FIXME: 输入字符后，diff会报错；应该是由于cemu和pua的串口内容不同导致的
+        if (c == 9) // ctrl+i
+        {
+            if (pc != NULL)
+                printf("PC = 0x%016lx, ", *pc);
+            if (phypc != NULL)
+                printf("PhyPC = 0x%016lx, ", *phypc);
+            if (inst != NULL)
+                printf("INST = 0x%08x\n", *inst);
+        }
+        else if (c == 20) // ctrl+t
+            open_trace();
+        else if (c == 10)
             c = 13; // convert lf to cr
         uart.putc(c);
     }
@@ -140,13 +156,6 @@ void workbench_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
     // setup boot ram
     mmio_mem boot_ram(262144 * 4, "./test/bin/uart/rv-print.bin");
 
-    // setup uart
-    uartlite uart;
-    std::thread *uart_input_thread = new std::thread(uart_input, std::ref(uart));
-    assert(mmio.add_dev(0x60000000, 0x100000, &boot_ram));
-    assert(mmio.add_dev(0x60100000, 0x10000, &uart));
-    assert(mmio.add_dev(0x80000000, 262144 * 4, &rtl_boot_ram), "mimo boot ram");
-
     // setup cemu {
     rv_systembus cemu_system_bus;
     mmio_mem cemu_boot_ram(262144 * 4, "./test/bin/uart/rv-print.bin");
@@ -157,6 +166,13 @@ void workbench_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
     rv_core cemu_rvcore(cemu_system_bus, 0);
     cemu_rvcore.jump(0x80000000);
     // setup cemu }
+
+    // setup uart
+    uartlite uart;
+    std::thread *uart_input_thread = new std::thread(uart_input, std::ref(uart));
+    assert(mmio.add_dev(0x60000000, 0x100000, &boot_ram));
+    assert(mmio.add_dev(0x60100000, 0x10000, &uart));
+    assert(mmio.add_dev(0x80000000, 262144 * 4, &rtl_boot_ram), "mimo boot ram");
 
     // connect fst for trace
     top->trace(&fst, 0);
@@ -254,6 +270,10 @@ void os_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
     rv_core cemu_rvcore(cemu_system_bus);
     cemu_rvcore.jump(0x80000000);
     cemu_rvcore.set_difftest_mode(true);
+
+    pc = &cemu_rvcore.debug_pc;
+    phypc = &cemu_rvcore.debug_phy_pc;
+    inst = &cemu_rvcore.debug_inst;
     // setup cemu }
 
     // setup rtl {
@@ -399,7 +419,9 @@ void os_cemu_run()
     assert(system_bus.add_dev(0x80000000, 2048l * 1024l * 1024l, &dram));
 
     rv_core rv(system_bus);
-
+    pc = &rv.debug_pc;
+    phypc = &rv.debug_phy_pc;
+    inst = &rv.debug_inst;
     std::thread uart_input_thread(uart_input, std::ref(uart));
 
     rv.jump(0x80000000);
@@ -438,6 +460,7 @@ void os_nodiff_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
     rv_plic<4, 4> plic;
 
     mmio_mem dram(0x100000000, payload_load_path);
+    pc = &(top->debug_pc);
 
     // setup uart
     uartlite uart;

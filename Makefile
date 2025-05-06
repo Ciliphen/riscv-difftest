@@ -23,7 +23,8 @@ func: obj_dir/V$(TOP_NAME)
 	./test/run_riscv_test.py
 
 os: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop -os -pc -printpc
+	./obj_dir/Vtop -os -pc -printpc # 间隔固定周期打印PC
+	# ./obj_dir/Vtop -os -pc # 键盘输入ctrl+i打印PC, 这个目前有bug
 
 emu: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop -os -emu
