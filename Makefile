@@ -39,7 +39,7 @@ opensbi_objdump:
 	./test/tools/riscv64-unknown-linux-gnu-objdump -D -M no-aliases,numeric --visualize-jumps=extended-color --disassembler-color=extended ./test/bin/os/fw_payload.elf | less
 
 vmlinux_objdump:
-	./test/tools/riscv64-unknown-linux-gnu-objdump -D -M no-aliases,numeric --visualize-jumps=extended-color --disassembler-color=extended ./test/bin/os/vmlinux.elf | less
+	./test/tools/riscv64-unknown-linux-gnu-objdump -d -M no-aliases,numeric ./test/bin/os/vmlinux.elf | less
 
 clean:
 	rm -rf obj_dir
