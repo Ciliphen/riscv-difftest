@@ -267,7 +267,7 @@ public:
                 assert(mstatus->spie != 2);
                 assert(mstatus->mpie != 2);
                 // mstatus->spp = nstatus->spp;
-                mstatus->mpp = (nstatus->mpp == 3 || nstatus->mpp == 0) ? nstatus->mpp : 0;
+                mstatus->mpp = (nstatus->mpp == 3 || nstatus->mpp == 0) ? nstatus->mpp : mstatus->mpp;
                 mstatus->mprv = nstatus->mprv;
                 // mstatus->sum = nstatus->sum; // always true
                 // mstatus->mxr = nstatus->mxr; // always true
