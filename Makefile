@@ -17,7 +17,7 @@ verilog:
 func: obj_dir/V$(TOP_NAME)
 	# ./obj_dir/Vtop ./test/bin/riscv-test/rv64ui-p-lui.bin -rvtest -trace 100000 -pc #-delay
 	# ./obj_dir/Vtop ./test/bin/riscv-test/mm.riscv.bin -rvtest #-trace 10000000 -pc #-delay
-	# ./obj_dir/Vtop -os -pc -printpc # -starttrace 184530000 #-nodiff 
+	# ./obj_dir/Vtop -os -pc -printpc # -starttrace 184530000 #-nodiff
 	# ./obj_dir/Vtop -os -pc -printpc
 	# ./obj_dir/Vtop -trace 100000 -pc
 	./test/run_riscv_test.py
