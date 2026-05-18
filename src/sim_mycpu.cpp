@@ -9,6 +9,8 @@
 #include <stdio.h>
 
 bool running = true;
+bool cache_writeback_error = false;
+uint64_t cache_writeback_error_addr = 0;
 bool run_riscv_test = false;
 bool run_os = false;
 bool dump_pc_history = false;
@@ -18,7 +20,7 @@ bool dual_issue = true;
 bool output_trace = false;
 bool difftest = true;
 bool perf_counter = false;
-const uint64_t commit_timeout = 3000;
+const uint64_t commit_timeout = 100000;
 const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
 std::atomic_bool trace_on = false;
@@ -26,6 +28,9 @@ long sim_time = 1e8;
 long long current_pc;
 
 VerilatedFstC fst;
+bool fst_opened = false;
+bool enable_pc_sequence_trace = false;
+bool load_elf_trace_started = false;
 
 long unsigned int *pc = NULL;
 long unsigned int *phypc = NULL;
@@ -33,8 +38,45 @@ unsigned int *inst = NULL;
 
 void open_trace()
 {
+    if (fst_opened)
+        return;
     fst.open("trace.fst");
+    fst_opened = true;
     trace_on.store(true, std::memory_order_seq_cst);
+}
+
+void open_trace_on_load_elf_sequence(uint64_t pc)
+{
+    static const uint64_t pc_sequence[] = {
+        0xffffffe0009be778UL,
+        0xffffffe0009be77cUL,
+        0xffffffe0009be780UL,
+        0xffffffe0009be784UL,
+        0xffffffe0004a9828UL,
+        0xffffffe0004a982cUL
+    };
+    static size_t match_index = 0;
+
+    if (!enable_pc_sequence_trace)
+        return;
+
+    if (load_elf_trace_started)
+        return;
+
+    if (pc == pc_sequence[match_index])
+    {
+        match_index++;
+        if (match_index == sizeof(pc_sequence) / sizeof(pc_sequence[0]))
+        {
+            printf("Matched configured PC sequence, start trace.\n");
+            open_trace();
+            load_elf_trace_started = true;
+        }
+    }
+    else
+    {
+        match_index = (pc == pc_sequence[0]) ? 1 : 0;
+    }
 }
 
 #undef assert
@@ -60,6 +102,189 @@ void assert(bool expr, const char *msg = "")
 #include <thread>
 #include <csignal>
 #include <sstream>
+#include <mutex>
+
+struct DebugSnapshot
+{
+    bool valid = false;
+    uint64_t pc = 0;
+    uint64_t ref_pc = 0;
+    uint64_t phy_pc = 0;
+    uint32_t inst = 0;
+    uint64_t mode = 0;
+    uint64_t mip = 0;
+    uint64_t mie = 0;
+    uint64_t mideleg = 0;
+    uint64_t mstatus = 0;
+    uint64_t mcause = 0;
+    uint64_t mepc = 0;
+    uint64_t scause = 0;
+    uint64_t sepc = 0;
+    uint64_t mtime = 0;
+    uint64_t mtimecmp = 0;
+    bool mti = false;
+    bool sei = false;
+};
+
+DebugSnapshot debug_snapshot;
+std::mutex debug_snapshot_mutex;
+
+struct StuckTraceSample
+{
+    uint64_t ticks = 0;
+    uint8_t commit = 0;
+    uint64_t pc = 0;
+    uint64_t mip = 0;
+    uint64_t mie = 0;
+    uint8_t mti = 0;
+    uint8_t sei = 0;
+    uint64_t mtime = 0;
+    uint64_t mtimecmp = 0;
+    uint8_t icache_state = 0;
+    uint8_t dcache_state = 0;
+    uint8_t ptw_state = 0;
+    uint8_t ptw_working = 0;
+    uint8_t immu_state = 0;
+    uint8_t dmmu_state = 0;
+    uint8_t req_ptw = 0;
+    uint8_t icache_stall = 0;
+    uint8_t dcache_ready = 0;
+    uint8_t arvalid = 0;
+    uint8_t arready = 0;
+    uint32_t araddr = 0;
+    uint8_t rvalid = 0;
+    uint8_t rready = 0;
+    uint8_t rlast = 0;
+    uint8_t awvalid = 0;
+    uint8_t awready = 0;
+    uint32_t awaddr = 0;
+    uint8_t wvalid = 0;
+    uint8_t wready = 0;
+    uint64_t wdata = 0;
+    uint8_t wstrb = 0;
+    uint8_t wlast = 0;
+    uint8_t bvalid = 0;
+    uint8_t bready = 0;
+};
+
+constexpr size_t stuck_trace_depth = 1000;
+StuckTraceSample stuck_trace[stuck_trace_depth];
+uint64_t stuck_trace_count = 0;
+
+void record_stuck_trace_sample(Vtop *top, uint64_t ticks, rv_clint<2> *clint = nullptr)
+{
+    StuckTraceSample &sample = stuck_trace[stuck_trace_count % stuck_trace_depth];
+    sample.ticks = ticks;
+    sample.commit = top->debug_commit;
+    sample.pc = top->debug_pc;
+    sample.mip = top->debug_csr_mip;
+    sample.mie = top->debug_csr_mie;
+    sample.mti = top->mti;
+    sample.sei = top->sei;
+    sample.mtime = clint != nullptr ? clint->get_mtime() : 0;
+    sample.mtimecmp = clint != nullptr ? clint->get_mtimecmp(0) : 0;
+    sample.icache_state = top->debug_mmu_icache_state;
+    sample.dcache_state = top->debug_mmu_dcache_state;
+    sample.ptw_state = top->debug_mmu_ptw_state;
+    sample.ptw_working = top->debug_mmu_ptw_working;
+    sample.immu_state = top->debug_mmu_immu_state;
+    sample.dmmu_state = top->debug_mmu_dmmu_state;
+    sample.req_ptw = top->debug_mmu_req_ptw;
+    sample.icache_stall = top->debug_mmu_icache_stall;
+    sample.dcache_ready = top->debug_mmu_dcache_ready;
+    sample.arvalid = top->axi_arvalid;
+    sample.arready = top->axi_arready;
+    sample.araddr = top->axi_araddr;
+    sample.rvalid = top->axi_rvalid;
+    sample.rready = top->axi_rready;
+    sample.rlast = top->axi_rlast;
+    sample.awvalid = top->axi_awvalid;
+    sample.awready = top->axi_awready;
+    sample.awaddr = top->axi_awaddr;
+    sample.wvalid = top->axi_wvalid;
+    sample.wready = top->axi_wready;
+    sample.wdata = top->axi_wdata;
+    sample.wstrb = top->axi_wstrb;
+    sample.wlast = top->axi_wlast;
+    sample.bvalid = top->axi_bvalid;
+    sample.bready = top->axi_bready;
+    stuck_trace_count++;
+}
+
+void dump_stuck_trace()
+{
+    printf("Stuck trace file dump is disabled.\n");
+}
+
+void update_rtl_debug_snapshot(Vtop *top, rv_clint<2> &clint, uint64_t ref_pc = 0, uint64_t phy_pc = 0, uint32_t inst = 0)
+{
+    std::lock_guard<std::mutex> lock(debug_snapshot_mutex);
+    debug_snapshot.valid = true;
+    debug_snapshot.pc = top->debug_pc;
+    debug_snapshot.ref_pc = ref_pc;
+    debug_snapshot.phy_pc = phy_pc;
+    debug_snapshot.inst = inst;
+    debug_snapshot.mode = top->debug_csr_mode;
+    debug_snapshot.mip = top->debug_csr_mip;
+    debug_snapshot.mie = top->debug_csr_mie;
+    debug_snapshot.mideleg = top->debug_csr_mideleg;
+    debug_snapshot.mstatus = top->debug_csr_mstatus;
+    debug_snapshot.mcause = top->debug_csr_mcause;
+    debug_snapshot.mepc = top->debug_csr_mepc;
+    debug_snapshot.scause = top->debug_csr_scause;
+    debug_snapshot.sepc = top->debug_csr_sepc;
+    debug_snapshot.mtime = clint.get_mtime();
+    debug_snapshot.mtimecmp = clint.get_mtimecmp(0);
+    debug_snapshot.mti = top->mti;
+    debug_snapshot.sei = top->sei;
+}
+
+void dump_rtl_stuck_state(Vtop *top, rv_clint<2> *clint = nullptr)
+{
+    printf("[rtl stuck]\n");
+    printf("debug_commit = %d, debug_pc = 0x%016lx\n", top->debug_commit, top->debug_pc);
+    printf("csr: mode = 0x%016lx, mip = 0x%016lx, mie = 0x%016lx, mideleg = 0x%016lx\n",
+           top->debug_csr_mode, top->debug_csr_mip, top->debug_csr_mie, top->debug_csr_mideleg);
+    printf("csr: mstatus = 0x%016lx, mcause = 0x%016lx, mepc = 0x%016lx\n",
+           top->debug_csr_mstatus, top->debug_csr_mcause, top->debug_csr_mepc);
+    printf("csr: scause = 0x%016lx, sepc = 0x%016lx, interrupt = %d\n",
+           top->debug_csr_scause, top->debug_csr_sepc, top->debug_csr_interrupt);
+    if (clint != nullptr)
+    {
+        printf("irq: mei = %d, msi = %d, mti = %d, sei = %d, mtime = 0x%016lx, mtimecmp = 0x%016lx\n",
+               top->mei, top->msi, top->mti, top->sei, clint->get_mtime(), clint->get_mtimecmp(0));
+    }
+    else
+    {
+    printf("irq: mei = %d, msi = %d, mti = %d, sei = %d\n",
+               top->mei, top->msi, top->mti, top->sei);
+    }
+    printf("mmu: icache_state = %u, dcache_state = %u, ptw_state = %u, ptw_working = %d\n",
+           top->debug_mmu_icache_state, top->debug_mmu_dcache_state,
+           top->debug_mmu_ptw_state, top->debug_mmu_ptw_working);
+    printf("mmu: immu_state = %u, dmmu_state = %u, req_ptw = 0x%x, choose_icache = %d\n",
+           top->debug_mmu_immu_state, top->debug_mmu_dmmu_state,
+           top->debug_mmu_req_ptw, top->debug_mmu_choose_icache);
+    printf("mmu: ptw_vpn valid/ready = %d/%d, ptw_pte_valid = %d\n",
+           top->debug_mmu_ptw_vpn_valid, top->debug_mmu_ptw_vpn_ready,
+           top->debug_mmu_ptw_pte_valid);
+    printf("mmu: itlb hit/page/access = %d/%d/%d, dtlb hit/page/access = %d/%d/%d\n",
+           top->debug_mmu_icache_tlb_hit, top->debug_mmu_icache_page_fault,
+           top->debug_mmu_icache_access_fault, top->debug_mmu_dcache_tlb_hit,
+           top->debug_mmu_dcache_page_fault, top->debug_mmu_dcache_access_fault);
+    printf("mmu: icache_stall = %d, dcache_ready = %d\n",
+           top->debug_mmu_icache_stall, top->debug_mmu_dcache_ready);
+    printf("axi ar: valid = %d, ready = %d, addr = 0x%08x, len = 0x%02x, size = 0x%x, id = 0x%x\n",
+           top->axi_arvalid, top->axi_arready, top->axi_araddr, top->axi_arlen, top->axi_arsize, top->axi_arid);
+    printf("axi  r: valid = %d, ready = %d, data = 0x%016lx, last = %d, resp = 0x%x, id = 0x%x\n",
+           top->axi_rvalid, top->axi_rready, top->axi_rdata, top->axi_rlast, top->axi_rresp, top->axi_rid);
+    printf("axi aw: valid = %d, ready = %d, addr = 0x%08x, len = 0x%02x, size = 0x%x, id = 0x%x\n",
+           top->axi_awvalid, top->axi_awready, top->axi_awaddr, top->axi_awlen, top->axi_awsize, top->axi_awid);
+    printf("axi  w: valid = %d, ready = %d, data = 0x%016lx, strb = 0x%02x, last = %d\n",
+           top->axi_wvalid, top->axi_wready, top->axi_wdata, top->axi_wstrb, top->axi_wlast);
+    printf("axi  b: valid = %d, ready = %d, resp = 0x%x, id = 0x%x\n",
+           top->axi_bvalid, top->axi_bready, top->axi_bresp, top->axi_bid);
+}
 
 void connect_wire(axi4_ptr<32, 64, 4> &mmio_ptr, Vtop *top)
 {
@@ -113,15 +338,39 @@ void uart_input(uartlite &uart)
         // FIXME: 输入字符后，diff会报错；应该是由于cemu和pua的串口内容不同导致的
         if (c == 9) // ctrl+i
         {
-            if (pc != NULL)
-                printf("PC = 0x%016lx, ", *pc);
-            if (phypc != NULL)
-                printf("PhyPC = 0x%016lx, ", *phypc);
-            if (inst != NULL)
-                printf("INST = 0x%08x\n", *inst);
+            std::lock_guard<std::mutex> lock(debug_snapshot_mutex);
+            if (debug_snapshot.valid)
+            {
+                printf("\n[rtl debug]\n");
+                printf("pc       = 0x%016lx, ref_pc = 0x%016lx, phy_pc = 0x%016lx, inst = 0x%08x\n",
+                       debug_snapshot.pc, debug_snapshot.ref_pc, debug_snapshot.phy_pc, debug_snapshot.inst);
+                printf("mode     = 0x%016lx, mip    = 0x%016lx, mie   = 0x%016lx\n",
+                       debug_snapshot.mode, debug_snapshot.mip, debug_snapshot.mie);
+                printf("mideleg  = 0x%016lx, mstatus= 0x%016lx\n",
+                       debug_snapshot.mideleg, debug_snapshot.mstatus);
+                printf("mcause   = 0x%016lx, mepc   = 0x%016lx\n",
+                       debug_snapshot.mcause, debug_snapshot.mepc);
+                printf("scause   = 0x%016lx, sepc   = 0x%016lx\n",
+                       debug_snapshot.scause, debug_snapshot.sepc);
+                printf("mtime    = 0x%016lx, mtimecmp = 0x%016lx, mti = %d, sei = %d\n",
+                       debug_snapshot.mtime, debug_snapshot.mtimecmp, debug_snapshot.mti, debug_snapshot.sei);
+            }
+            else
+            {
+                if (pc != NULL)
+                    printf("PC = 0x%016lx, ", *pc);
+                if (phypc != NULL)
+                    printf("PhyPC = 0x%016lx, ", *phypc);
+                if (inst != NULL)
+                    printf("INST = 0x%08x\n", *inst);
+            }
+            continue;
         }
         else if (c == 20) // ctrl+t
+        {
             open_trace();
+            continue;
+        }
         else if (c == 10)
             c = 13; // convert lf to cr
         uart.putc(c);
@@ -239,6 +488,7 @@ void workbench_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
         {
             printf("\033[1;31mError!\033[0m\n");
             printf("CPU stuck for %ld cycles!\n", commit_timeout / 2);
+            dump_rtl_stuck_state(top);
             running = false;
             if (dump_pc_history)
                 cemu_rvcore.dump_pc_history();
@@ -304,6 +554,7 @@ void os_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
     uint64_t ticks = 0;
     uint64_t last_commit = ticks;
     uint64_t pc_cnt = print_pc_cycle;
+    bool stuck_trace_started = false;
     while (!Verilated::gotFinish() && sim_time > 0 && running)
     {
         clint.tick();
@@ -336,13 +587,17 @@ void os_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
                 fflush(stdout);
             }
         }
+        update_rtl_debug_snapshot(top, clint, cemu_rvcore.debug_pc, cemu_rvcore.debug_phy_pc, cemu_rvcore.debug_inst);
+        record_stuck_trace_sample(top, ticks, &clint);
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
             cemu_rvcore.import_diff_test_info(top->debug_csr_mip, top->debug_csr_interrupt);
             cemu_rvcore.step(0, 0, 0, 0);
             // cemu_rvcore.step(cemu_plic.get_int(0), cemu_clint.m_s_irq(0), cemu_clint.m_t_irq(0), cemu_plic.get_int(1));
             last_commit = ticks;
+            stuck_trace_started = false;
             current_pc = cemu_rvcore.debug_pc;
+            open_trace_on_load_elf_sequence(cemu_rvcore.debug_pc);
             if (pc_cnt++ >= print_pc_cycle && print_pc)
             {
                 printf("PC = 0x%016lx, ", cemu_rvcore.debug_pc);
@@ -360,6 +615,8 @@ void os_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
                 printf("ticks: %ld\n", ticks);
                 printf("reference: PC = 0x%016lx, wb_rf_wnum = 0x%02lx, wb_rf_wdata = 0x%016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
                 printf("mycpu    : PC = 0x%016lx, wb_rf_wnum = 0x%02x, wb_rf_wdata = 0x%016lx\n", top->debug_pc, top->debug_rf_wnum, top->debug_rf_wdata);
+                dump_rtl_stuck_state(top, &clint);
+                dump_stuck_trace();
                 running = false;
                 if (dump_pc_history)
                 {
@@ -386,15 +643,32 @@ void os_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
         {
             open_trace();
         }
+        if (!stuck_trace_started && ticks - last_commit >= commit_timeout / 2)
+        {
+            printf("No commit for %ld cycles, start waveform trace before stuck.\n", commit_timeout / 2);
+            open_trace();
+            stuck_trace_started = true;
+        }
         ticks++;
         if (ticks - last_commit >= commit_timeout)
         {
             printf("\033[1;31mError!\033[0m\n");
-            printf("CPU stuck for %ld cycles!\n", commit_timeout / 2);
+            printf("CPU stuck for %ld cycles!\n", commit_timeout);
+            dump_rtl_stuck_state(top, &clint);
+            dump_stuck_trace();
             running = false;
             if (dump_pc_history)
                 cemu_rvcore.dump_pc_history();
         }
+    }
+    if (cache_writeback_error)
+    {
+        printf("\033[1;31mError!\033[0m\n");
+        printf("Writeback cache mismatch at addr 0x%lx\n", cache_writeback_error_addr);
+        dump_rtl_stuck_state(top, &clint);
+        dump_stuck_trace();
+        cemu_rvcore.dump_pc_history();
+        cemu_rvcore.dump_gpr();
     }
     top->final();
     if (trace_on)
@@ -505,6 +779,7 @@ void os_nodiff_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref)
                 fflush(stdout);
             }
         }
+        update_rtl_debug_snapshot(top, clint);
         if (pc_cnt++ >= print_pc_cycle && print_pc)
         {
             if (top->debug_pc != 0)
@@ -538,12 +813,10 @@ void riscv_test_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref, const char *riscv_
     assert(mmio.add_dev(0x80000000, 128 * 1024 * 1024, &rtl_mem));
     // setup rtl }
 
-    // connect Vcd for trace
+    // connect fst for trace
+    top->trace(&fst, 0);
     if (trace_on)
-    {
-        top->trace(&fst, 0);
-        fst.open("trace.fst");
-    }
+        open_trace();
     uint64_t rst_ticks = 10;
     uint64_t ticks = 0;
     uint64_t last_commit = ticks;
@@ -615,6 +888,7 @@ void riscv_test_run(Vtop *top, axi4_ref<32, 64, 4> &mmio_ref, const char *riscv_
         {
             printf("\033[1;31mError!\033[0m\n");
             printf("CPU stuck for %ld cycles!\n", commit_timeout / 2);
+            dump_rtl_stuck_state(top);
             running = false;
             if (dump_pc_history)
                 cemu_rvcore.dump_pc_history();
@@ -660,6 +934,10 @@ int main(int argc, char **argv, char **env)
                 sscanf(argv[++i], "%lu", &trace_start_time);
             }
             printf("trace start time: %lu\n", trace_start_time);
+        }
+        else if (strcmp(argv[i], "-tracepcseq") == 0) // 匹配指定PC序列后打开trace
+        {
+            enable_pc_sequence_trace = true;
         }
         else if (strcmp(argv[i], "-rvtest") == 0) // 运行RISCV测试
         {

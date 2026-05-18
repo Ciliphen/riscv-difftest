@@ -8,6 +8,8 @@
 #include <iostream>
 
 extern bool running;
+extern bool cache_writeback_error;
+extern uint64_t cache_writeback_error_addr;
 
 class mmio_mem : public mmio_dev
 {
@@ -70,8 +72,14 @@ public:
                 for (int i = 0; i < size; i++)
                     if (mem[start_addr + i] != diff_mem[start_addr + i])
                     {
+                        if (!cache_writeback_error)
+                        {
+                            cache_writeback_error = true;
+                            cache_writeback_error_addr = start_addr + i;
+                        }
                         running = false;
-                        printf("Error writeback cache at addr %lx\n", start_addr + i);
+                        printf("Error writeback cache at addr %lx, rtl = %02x, ref = %02x, write_base = %lx, write_size = %lu\n",
+                               start_addr + i, mem[start_addr + i], diff_mem[start_addr + i], start_addr, size);
                     }
             }
             return true;
@@ -87,8 +95,14 @@ public:
                     for (int i = 0; i < size; i++)
                         if (mem[start_addr + i] != diff_mem[start_addr + i])
                         {
+                            if (!cache_writeback_error)
+                            {
+                                cache_writeback_error = true;
+                                cache_writeback_error_addr = start_addr + i;
+                            }
                             running = false;
-                            printf("Error writeback cache at addr %lx\n", start_addr + i);
+                            printf("Error writeback cache at addr %lx, rtl = %02x, ref = %02x, write_base = %lx, write_size = %lu\n",
+                                   start_addr + i, mem[start_addr + i], diff_mem[start_addr + i], start_addr, size);
                         }
                 }
                 return true;

@@ -96,6 +96,12 @@ public:
     {
         return mtime;
     }
+    uint64_t get_mtimecmp(unsigned int hart_id)
+    {
+        if (hart_id >= nr_hart)
+            assert(false);
+        return mtimecmp[hart_id];
+    }
     bool m_s_irq(unsigned int hart_id)
     { // machine software irq
         if (hart_id >= nr_hart)
