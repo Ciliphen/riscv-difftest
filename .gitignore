@@ -13,3 +13,4 @@ golden_trace.txt
 trace.fst
 trace.gtkw
 trace.txt
+*.fst
