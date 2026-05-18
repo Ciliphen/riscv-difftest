@@ -48,7 +48,15 @@ module top(
     // debug csr
     output      debug_csr_interrupt,
     output[63:0]debug_csr_mcycle,
+    output[63:0]debug_csr_mode,
     output[63:0]debug_csr_mip,
+    output[63:0]debug_csr_mie,
+    output[63:0]debug_csr_mideleg,
+    output[63:0]debug_csr_mstatus,
+    output[63:0]debug_csr_mcause,
+    output[63:0]debug_csr_mepc,
+    output[63:0]debug_csr_scause,
+    output[63:0]debug_csr_sepc,
     output[63:0]debug_csr_minstret,
     // perf
     output      debug_perf_icache_req,
@@ -56,7 +64,27 @@ module top(
     output      debug_perf_dcache_req,
     output      debug_perf_dcache_hit,
     output      debug_perf_bru_pred_branch,
-    output      debug_perf_bru_pred_fail
+    output      debug_perf_bru_pred_fail,
+    // debug mmu/cache
+    output[2:0] debug_mmu_icache_state,
+    output[2:0] debug_mmu_dcache_state,
+    output[2:0] debug_mmu_ptw_state,
+    output      debug_mmu_ptw_working,
+    output[1:0] debug_mmu_immu_state,
+    output[1:0] debug_mmu_dmmu_state,
+    output[1:0] debug_mmu_req_ptw,
+    output      debug_mmu_choose_icache,
+    output      debug_mmu_ptw_vpn_valid,
+    output      debug_mmu_ptw_vpn_ready,
+    output      debug_mmu_ptw_pte_valid,
+    output      debug_mmu_icache_tlb_hit,
+    output      debug_mmu_icache_page_fault,
+    output      debug_mmu_icache_access_fault,
+    output      debug_mmu_dcache_tlb_hit,
+    output      debug_mmu_dcache_page_fault,
+    output      debug_mmu_dcache_access_fault,
+    output      debug_mmu_icache_stall,
+    output      debug_mmu_dcache_ready
 );
 
 PuaCpu core(
@@ -108,7 +136,15 @@ PuaCpu core(
     .io_debug_rf_wdata        (debug_rf_wdata),
     // debug csr
     .io_debug_csr_mcycle      (debug_csr_mcycle),
+    .io_debug_csr_mode        (debug_csr_mode),
     .io_debug_csr_mip         (debug_csr_mip),
+    .io_debug_csr_mie         (debug_csr_mie),
+    .io_debug_csr_mideleg     (debug_csr_mideleg),
+    .io_debug_csr_mstatus     (debug_csr_mstatus),
+    .io_debug_csr_mcause      (debug_csr_mcause),
+    .io_debug_csr_mepc        (debug_csr_mepc),
+    .io_debug_csr_scause      (debug_csr_scause),
+    .io_debug_csr_sepc        (debug_csr_sepc),
     .io_debug_csr_interrupt   (debug_csr_interrupt),
     .io_debug_csr_minstret    (debug_csr_minstret),
     // perf
@@ -117,7 +153,27 @@ PuaCpu core(
     .io_debug_perf_dcache_req (debug_perf_dcache_req),
     .io_debug_perf_dcache_hit (debug_perf_dcache_hit),
     .io_debug_perf_bru_pred_branch (debug_perf_bru_pred_branch),
-    .io_debug_perf_bru_pred_fail (debug_perf_bru_pred_fail)
+    .io_debug_perf_bru_pred_fail (debug_perf_bru_pred_fail),
+    // debug mmu/cache
+    .io_mmu_debug_icache_state        (debug_mmu_icache_state),
+    .io_mmu_debug_dcache_state        (debug_mmu_dcache_state),
+    .io_mmu_debug_ptw_state           (debug_mmu_ptw_state),
+    .io_mmu_debug_ptw_working         (debug_mmu_ptw_working),
+    .io_mmu_debug_immu_state          (debug_mmu_immu_state),
+    .io_mmu_debug_dmmu_state          (debug_mmu_dmmu_state),
+    .io_mmu_debug_req_ptw             (debug_mmu_req_ptw),
+    .io_mmu_debug_choose_icache       (debug_mmu_choose_icache),
+    .io_mmu_debug_ptw_vpn_valid       (debug_mmu_ptw_vpn_valid),
+    .io_mmu_debug_ptw_vpn_ready       (debug_mmu_ptw_vpn_ready),
+    .io_mmu_debug_ptw_pte_valid       (debug_mmu_ptw_pte_valid),
+    .io_mmu_debug_icache_tlb_hit      (debug_mmu_icache_tlb_hit),
+    .io_mmu_debug_icache_page_fault   (debug_mmu_icache_page_fault),
+    .io_mmu_debug_icache_access_fault (debug_mmu_icache_access_fault),
+    .io_mmu_debug_dcache_tlb_hit      (debug_mmu_dcache_tlb_hit),
+    .io_mmu_debug_dcache_page_fault   (debug_mmu_dcache_page_fault),
+    .io_mmu_debug_dcache_access_fault (debug_mmu_dcache_access_fault),
+    .io_mmu_debug_icache_stall        (debug_mmu_icache_stall),
+    .io_mmu_debug_dcache_ready        (debug_mmu_dcache_ready)
 );
 
 endmodule
