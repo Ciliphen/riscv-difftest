@@ -1,5 +1,5 @@
 TOP_NAME := top
-SRC_DIR  := ./core
+SRC_DIR := ./core
 SRC_FILE := $(shell find $(SRC_DIR) -name '*.svh') $(shell find $(SRC_DIR) -name '*.v') $(shell find $(SRC_DIR) -name '*.sv')
 CHISEL_DIR = ../chisel
 BUILD_DIR = $(CHISEL_DIR)/build
@@ -15,16 +15,10 @@ verilog:
 	cp $(CHISEL_DIR)/build/PuaCpu.v $(SRC_DIR)
 
 func: obj_dir/V$(TOP_NAME)
-	# ./obj_dir/Vtop ./test/bin/riscv-test/rv64ui-p-lui.bin -rvtest -trace 100000 -pc #-delay
-	# ./obj_dir/Vtop ./test/bin/riscv-test/mm.riscv.bin -rvtest #-trace 10000000 -pc #-delay
-	# ./obj_dir/Vtop -os -pc -printpc # -starttrace 184530000 #-nodiff
-	# ./obj_dir/Vtop -os -pc -printpc
-	# ./obj_dir/Vtop -trace 100000 -pc
 	./test/run_riscv_test.py
 
 os: obj_dir/V$(TOP_NAME)
-	./obj_dir/Vtop -os -pc -tracepcseq # -printpc # 间隔固定周期打印PC
-	# ./obj_dir/Vtop -os -pc # 键盘输入ctrl+i打印PC, 这个目前有bug
+	./obj_dir/Vtop -os -pc -nodiff
 
 emu: obj_dir/V$(TOP_NAME)
 	./obj_dir/Vtop -os -emu
@@ -35,7 +29,7 @@ perf: obj_dir/V$(TOP_NAME)
 objdump:
 	./test/tools/riscv64-unknown-linux-gnu-objdump -D -M no-aliases,numeric --visualize-jumps=extended-color --disassembler-color=extended $(DUMP_FILE) | less
 
-opensbi_objdump:
+fw_payload_objdump:
 	./test/tools/riscv64-unknown-linux-gnu-objdump -D -M no-aliases,numeric --visualize-jumps=extended-color --disassembler-color=extended ./test/bin/os/fw_payload.elf | less
 
 vmlinux_objdump:
