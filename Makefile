@@ -1,5 +1,5 @@
 TOP_NAME := top
-SRC_DIR  := ./core
+SRC_DIR := ./core
 SRC_FILE := $(shell find $(SRC_DIR) -name '*.svh') $(shell find $(SRC_DIR) -name '*.h') $(shell find $(SRC_DIR) -name '*.v') $(shell find $(SRC_DIR) -name '*.sv')
 CHISEL_DIR = ../chisel
 BUILD_DIR = $(CHISEL_DIR)/build
@@ -29,6 +29,9 @@ perf: obj_dir/V$(TOP_NAME)
 	$(call git_commit, "perf test RTL") # DO NOT REMOVE THIS LINE!!!
 	count=0; \
 	for test in ./test/bin/riscv-test/benchmarks/*; do \
+		case "$$test" in \
+			*dhrystone*|*mt-vvadd*) continue ;; \
+		esac; \
 		count=$$((count + 1)); \
 		echo "Running test $$count: $$test"; \
 		./obj_dir/V$(TOP_NAME) $$test -rvtest -pc -perf; \

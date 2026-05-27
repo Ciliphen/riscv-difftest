@@ -19,7 +19,9 @@ bool init_gprs = false;
 bool write_append = false;
 bool has_delayslot = false;
 bool only_modeM = false;
+bool trace_enabled = false;
 const uint64_t commit_timeout = 3000;
+const uint64_t max_ref_cycles = 2000000;
 const uint64_t print_pc_cycle = 5e5;
 long trace_start_time = 0; // -starttrace [time]
 std::atomic_bool trace_on = false;
@@ -32,8 +34,61 @@ VerilatedFstC fst;
 
 void open_trace()
 {
+    if (trace_on.load(std::memory_order_seq_cst))
+        return;
     fst.open("trace.fst");
     trace_on.store(true, std::memory_order_seq_cst);
+}
+
+void setup_trace(Vtop *top)
+{
+    if (!trace_enabled)
+        return;
+    top->trace(&fst, 0);
+    if (trace_start_time <= 0)
+        open_trace();
+}
+
+void dump_trace(uint64_t ticks)
+{
+    if (!trace_enabled)
+        return;
+    if (!trace_on.load(std::memory_order_seq_cst) && trace_start_time > 0 && ticks >= (uint64_t)trace_start_time)
+    {
+        printf("trace starts at tick %lu\n", ticks);
+        open_trace();
+    }
+    if (trace_on.load(std::memory_order_seq_cst))
+    {
+        fst.dump(ticks);
+        sim_time--;
+    }
+}
+
+void print_perf_summary()
+{
+    printf("\033[32m");
+    if (perf_counter)
+    {
+        printf("Total instr: %lld\n", total_instr);
+        printf("Total cycle: %lld\n", total_cycle);
+        printf("IPC: %lf\n", (double)total_instr / total_cycle);
+    }
+    printf("\033[0m");
+}
+
+bool check_ref_timeout(rv_core &cemu_rvcore)
+{
+    if (!run_riscv_test || cemu_rvcore.get_cycle() < max_ref_cycles)
+        return false;
+
+    printf("\033[31mTest timeout! at reference cycle %lu, reference pc 0x%lx\n\033[0m",
+           cemu_rvcore.get_cycle(), cemu_rvcore.debug_pc);
+    print_perf_summary();
+    if (dump_pc_history)
+        cemu_rvcore.dump_pc_history();
+    running = false;
+    return true;
 }
 
 #undef assert
@@ -104,11 +159,7 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     // setup rtl }
 
     // connect Vcd for trace
-    if (trace_on)
-    {
-        top->trace(&fst, 0);
-        fst.open("trace.fst");
-    }
+    setup_trace(top);
     uint64_t rst_ticks = 10;
     uint64_t ticks = 0;
     uint64_t last_commit = ticks;
@@ -144,6 +195,8 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
             // cemu_rvcore.import_diff_test_info(top->debug_csr_mcycle, top->debug_csr_minstret, top->debug_csr_mip, top->debug_csr_interrupt);
+            if (check_ref_timeout(cemu_rvcore))
+                break;
             if (has_delayslot)
             {
                 if (!delayslot_cnt)
@@ -156,6 +209,8 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
             {
                 cemu_rvcore.step(0, 0, 0, 0);
             }
+            if (check_ref_timeout(cemu_rvcore))
+                break;
             last_commit = ticks;
             if (pc_cnt++ >= print_pc_cycle && print_pc)
             {
@@ -195,11 +250,7 @@ void riscv_test_run(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
             }
             // ==========================
         }
-        if (trace_on)
-        {
-            fst.dump(ticks);
-            sim_time--;
-        }
+        dump_trace(ticks);
         ticks++;
         if (ticks - last_commit >= commit_timeout)
         {
@@ -245,11 +296,7 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
     // setup rtl }
 
     // connect Vcd for trace
-    if (trace_on)
-    {
-        top->trace(&fst, 0);
-        fst.open("trace.fst");
-    }
+    setup_trace(top);
 
     FILE *trace_file;
     if (write_append)
@@ -292,6 +339,8 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
         }
         if (((top->clock && !dual_issue) || dual_issue) && top->debug_commit)
         { // instr retire
+            if (check_ref_timeout(cemu_rvcore))
+                break;
             if (has_delayslot)
             {
                 if (!delayslot_cnt)
@@ -304,6 +353,8 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
             {
                 cemu_rvcore.step(0, 0, 0, 0);
             }
+            if (check_ref_timeout(cemu_rvcore))
+                break;
             last_commit = ticks;
             if ((top->debug_pc != cemu_rvcore.debug_pc ||
                  cemu_rvcore.debug_reg_num != 0 &&
@@ -339,11 +390,7 @@ void make_cpu_trace(Vtop *top, nscscc_sram_ref &mmio_ref, const char *riscv_test
             // ==========================
             fprintf(trace_file, "1 %016lx %02lx %016lx\n", cemu_rvcore.debug_pc, cemu_rvcore.debug_reg_num, cemu_rvcore.debug_reg_wdata);
         }
-        if (trace_on)
-        {
-            fst.dump(ticks);
-            sim_time--;
-        }
+        dump_trace(ticks);
         ticks++;
         if (ticks - last_commit >= commit_timeout)
         {
@@ -377,7 +424,7 @@ int main(int argc, char **argv, char **env)
     {
         if (strcmp(argv[i], "-trace") == 0)
         {
-            trace_on = true;
+            trace_enabled = true;
             if (i + 1 < argc)
             {
                 sscanf(argv[++i], "%lu", &sim_time);
@@ -387,9 +434,9 @@ int main(int argc, char **argv, char **env)
         {
             if (i + 1 < argc)
             {
-                sscanf(argv[++i], "%lu", &trace_start_time);
+                sscanf(argv[++i], "%ld", &trace_start_time);
             }
-            printf("trace start time: %lu\n", trace_start_time);
+            printf("trace start time: %ld\n", trace_start_time);
         }
         else if (strcmp(argv[i], "-rvtest") == 0)
         {

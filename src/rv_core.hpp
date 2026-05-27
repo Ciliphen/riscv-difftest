@@ -98,6 +98,10 @@ public:
         priv.difftest_preexec(mcycle, minstret, mip, interrupt_on);
         int_allow = interrupt_on;
     }
+    uint64_t get_cycle()
+    {
+        return priv.get_cycle();
+    }
 
 private:
     uint32_t trace_size = 32;
@@ -113,19 +117,6 @@ private:
         debug_is_branch = false;
         debug_reg_num = 0;
         debug_reg_wdata = 0;
-        if (run_riscv_test && priv.get_cycle() >= 2e6) // 默认是1e6
-        {
-            printf("\033[31mTest timeout! at pc 0x%lx\n\033[0m", pc);
-            printf("\033[32m");
-            if (perf_counter)
-            {
-                printf("Total instr: %lld\n", total_instr);
-                printf("Total cycle: %lld\n", total_cycle);
-                printf("IPC: %lf\n", (double)total_instr / total_cycle);
-            }
-            printf("\033[0m"); // Reset the text color to default
-            exit(1);
-        }
         if (trace_size)
         {
             trace.push(pc);
